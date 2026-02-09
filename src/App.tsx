@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import AgentWizard from "./pages/AgentWizard";
+import Departments from "./pages/Departments";
+import AdminDashboard from "./pages/AdminDashboard";
+import Layout from "./components/Layout";
 
 const queryClient = new QueryClient();
 
@@ -12,11 +16,16 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <Sonner position="top-right" />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route element={<Layout />}>
+            <Route path="/" element={<Index />} />
+            <Route path="/agents/new" element={<AgentWizard />} />
+            <Route path="/agents/edit/:id" element={<AgentWizard />} />
+            <Route path="/departments" element={<Departments />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
