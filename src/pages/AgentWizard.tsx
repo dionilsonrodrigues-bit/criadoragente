@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Check, 
   ChevronLeft, 
@@ -11,7 +11,8 @@ import {
   BrainCircuit,
   ShieldAlert,
   Target,
-  Copy
+  Copy,
+  Loader2
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,7 +42,9 @@ const steps = [
 ];
 
 const AgentWizard = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<AgentData>({
     name: '',
@@ -56,15 +59,47 @@ const AgentWizard = () => {
     transferDept: '',
   });
 
+  // Simulação de carregamento de dados para edição
+  useEffect(() => {
+    if (id) {
+      setIsLoading(true);
+      setTimeout(() => {
+        // Mock de dados carregados
+        setFormData({
+          name: 'Agente de Vendas Natal (Editado)',
+          objective: 'vender',
+          type: 'sdr',
+          tone: 'persuasivo',
+          responseSize: 'medias',
+          allowEmoji: true,
+          basePrompt: 'Foque em oferecer o desconto de 20% para novos clientes.',
+          businessContext: 'Somos a maior loja de varejo da região...',
+          transferRule: 'Quando pedirem desconto maior que 20%',
+          transferDept: 'vendas',
+        });
+        setIsLoading(false);
+      }, 800);
+    }
+  }, [id]);
+
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, steps.length));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   const handleSave = () => {
-    toast.success('Agente salvo com sucesso!');
+    toast.success(id ? 'Agente atualizado com sucesso!' : 'Agente criado com sucesso!');
     navigate('/');
   };
 
   const finalPrompt = generateFinalPrompt(formData);
+
+  if (isLoading) {
+    return (
+      <div className="h-96 flex flex-col items-center justify-center gap-4">
+        <Loader2 className="animate-spin text-blue-600" size={40} />
+        <p className="text-gray-500 font-medium">Carregando dados do agente...</p>
+      </div>
+    );
+  }
 
   const renderStepContent = () => {
     switch(currentStep) {
@@ -89,7 +124,7 @@ const AgentWizard = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Objetivo Principal</Label>
-                <Select onValueChange={(v) => setFormData({...formData, objective: v})}>
+                <Select value={formData.objective} onValueChange={(v) => setFormData({...formData, objective: v})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o que o agente deve fazer" />
                   </SelectTrigger>
@@ -103,7 +138,7 @@ const AgentWizard = () => {
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Agente</Label>
-                <Select onValueChange={(v) => setFormData({...formData, type: v})}>
+                <Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o cargo do agente" />
                   </SelectTrigger>
@@ -124,7 +159,7 @@ const AgentWizard = () => {
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label>Tom de Voz</Label>
-                <Select defaultValue="amigável" onValueChange={(v) => setFormData({...formData, tone: v})}>
+                <Select value={formData.tone} onValueChange={(v) => setFormData({...formData, tone: v})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -138,7 +173,7 @@ const AgentWizard = () => {
               </div>
               <div className="space-y-2">
                 <Label>Tamanho das Respostas</Label>
-                <Select defaultValue="médias" onValueChange={(v) => setFormData({...formData, responseSize: v})}>
+                <Select value={formData.responseSize} onValueChange={(v) => setFormData({...formData, responseSize: v})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -199,7 +234,7 @@ const AgentWizard = () => {
             </div>
             <div className="space-y-2">
               <Label>Setor de Destino</Label>
-              <Select onValueChange={(v) => setFormData({...formData, transferDept: v})}>
+              <Select value={formData.transferDept} onValueChange={(v) => setFormData({...formData, transferDept: v})}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o departamento" />
                 </SelectTrigger>
@@ -281,11 +316,18 @@ const AgentWizard = () => {
         <CardContent className="pt-8 px-10">
           <div className="min-h-[420px]">
             <div className="mb-8">
-              <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                <span className="bg-slate-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm">{currentStep}</span>
-                {steps[currentStep - 1].title}
-              </h3>
-              <p className="text-gray-500 text-sm mt-1">Preencha os campos abaixo para configurar o comportamento da IA.</p>
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                    <span className="bg-slate-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm">{currentStep}</span>
+                    {steps[currentStep - 1].title}
+                  </h3>
+                  <p className="text-gray-500 text-sm mt-1">Preencha os campos abaixo para configurar o comportamento da IA.</p>
+                </div>
+                {id && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Editando Agente #{id}</Badge>
+                )}
+              </div>
             </div>
             {renderStepContent()}
           </div>
@@ -304,7 +346,7 @@ const AgentWizard = () => {
             {currentStep === steps.length ? (
               <Button onClick={handleSave} className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 px-8">
                 <Save size={18} />
-                Salvar Agente
+                {id ? 'Atualizar Agente' : 'Salvar Agente'}
               </Button>
             ) : (
               <Button onClick={nextStep} className="gap-2 bg-slate-900 hover:bg-slate-800 px-8">
