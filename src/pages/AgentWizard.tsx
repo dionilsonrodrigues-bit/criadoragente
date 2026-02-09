@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { generateFinalPrompt, AgentData } from '@/lib/prompt-engine';
@@ -41,6 +42,22 @@ const steps = [
   { id: 7, title: 'Revisão', icon: Check },
 ];
 
+const DEFAULT_BRAIN_TEMPLATE = `# DIRETRIZES DE COMPORTAMENTO
+- Seja sempre cordial, empático e profissional.
+- Responda de forma objetiva, evitando textos excessivamente longos a menos que solicitado.
+- Se não souber uma resposta, nunca invente. Informe que irá consultar o setor responsável.
+
+# ESTRATÉGIA DE ATENDIMENTO
+1. Saudação: Inicie sempre com uma recepção calorosa e mencione seu nome.
+2. Escuta Ativa: Demonstre que entendeu o problema ou dúvida do cliente.
+3. Resolução: Forneça a informação baseada estritamente no seu "Conhecimento do Negócio".
+4. Fechamento: Pergunte se há algo mais em que possa ajudar antes de encerrar.
+
+# RESTRIÇÕES E SEGURANÇA
+- Nunca mencione nomes de empresas concorrentes.
+- Nunca forneça opiniões pessoais sobre política, religião ou temas sensíveis.
+- Não prometa descontos ou prazos que não estejam validados no seu contexto.`;
+
 const AgentWizard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -53,18 +70,16 @@ const AgentWizard = () => {
     tone: 'amigável',
     responseSize: 'médias',
     allowEmoji: true,
-    basePrompt: '',
+    basePrompt: DEFAULT_BRAIN_TEMPLATE,
     businessContext: '',
     transferRule: '',
     transferDept: '',
   });
 
-  // Simulação de carregamento de dados para edição
   useEffect(() => {
     if (id) {
       setIsLoading(true);
       setTimeout(() => {
-        // Mock de dados carregados
         setFormData({
           name: 'Agente de Vendas Natal (Editado)',
           objective: 'vender',
@@ -200,13 +215,24 @@ const AgentWizard = () => {
       case 4:
         return (
           <div className="space-y-4 animate-in fade-in duration-500">
-            <Label>Como esse agente deve agir? (Cérebro)</Label>
+            <div className="flex justify-between items-center">
+              <Label>Como esse agente deve agir? (Cérebro)</Label>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-[10px] h-7"
+                onClick={() => setFormData({...formData, basePrompt: DEFAULT_BRAIN_TEMPLATE})}
+              >
+                Resetar para Modelo
+              </Button>
+            </div>
             <Textarea 
               placeholder="Descreva as regras comportamentais, prioridades e a estratégia de conversa..." 
-              className="min-h-[200px]"
+              className="min-h-[250px] font-mono text-sm leading-relaxed"
               value={formData.basePrompt}
               onChange={(e) => setFormData({...formData, basePrompt: e.target.value})}
             />
+            <p className="text-[11px] text-gray-400 italic">Dica: Utilize a estrutura de tópicos para melhores resultados com a IA.</p>
           </div>
         );
       case 5:
