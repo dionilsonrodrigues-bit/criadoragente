@@ -58,6 +58,11 @@ const DEFAULT_BRAIN_TEMPLATE = `# DIRETRIZES DE COMPORTAMENTO
 - Nunca forneça opiniões pessoais sobre política, religião ou temas sensíveis.
 - Não prometa descontos ou prazos que não estejam validados no seu contexto.`;
 
+const DEFAULT_TRANSFER_TEMPLATE = `- Quando o cliente solicitar expressamente falar com um atendente humano.
+- Quando o cliente demonstrar irritação, impaciência ou usar linguagem inadequada.
+- Quando o cliente tiver uma dúvida técnica complexa que não consta no seu conhecimento.
+- Quando o assunto envolver negociações financeiras, cancelamentos ou reclamações críticas.`;
+
 const AgentWizard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -72,7 +77,7 @@ const AgentWizard = () => {
     allowEmoji: true,
     basePrompt: DEFAULT_BRAIN_TEMPLATE,
     businessContext: '',
-    transferRule: '',
+    transferRule: DEFAULT_TRANSFER_TEMPLATE,
     transferDept: '',
   });
 
@@ -251,9 +256,20 @@ const AgentWizard = () => {
         return (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="space-y-2">
-              <Label>Quando transferir para um humano?</Label>
+              <div className="flex justify-between items-center">
+                <Label>Quando transferir para um humano?</Label>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-[10px] h-7"
+                  onClick={() => setFormData({...formData, transferRule: DEFAULT_TRANSFER_TEMPLATE})}
+                >
+                  Resetar para Modelo
+                </Button>
+              </div>
               <Textarea 
                 placeholder="Ex: Quando o cliente pedir falar com atendente ou estiver irritado..." 
+                className="min-h-[150px] font-mono text-sm leading-relaxed"
                 value={formData.transferRule}
                 onChange={(e) => setFormData({...formData, transferRule: e.target.value})}
               />
