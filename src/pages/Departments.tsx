@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Users, Edit2, Trash2, Building2 } from 'lucide-react';
+import { Plus, Users, Edit2, Trash2, Building2, Fingerprint } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { 
   Table, 
@@ -26,9 +26,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 
 const initialDepts = [
-  { id: 1, name: 'Vendas', description: 'Equipe responsável por fechamentos e orçamentos', staff: 4 },
-  { id: 2, name: 'Suporte Técnico', description: 'Atendimento N1 e dúvidas de uso', staff: 6 },
-  { id: 3, name: 'Financeiro', description: 'Boletos, notas e cobrança', staff: 2 },
+  { id: 1, atendiId: '101', name: 'Vendas', description: 'Equipe responsável por fechamentos e orçamentos', staff: 4 },
+  { id: 2, atendiId: '202', name: 'Suporte Técnico', description: 'Atendimento N1 e dúvidas de uso', staff: 6 },
+  { id: 3, atendiId: '303', name: 'Financeiro', description: 'Boletos, notas e cobrança', staff: 2 },
 ];
 
 const Departments = () => {
@@ -40,14 +40,16 @@ const Departments = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
+    const atendiId = formData.get('atendiId') as string;
     const description = formData.get('description') as string;
 
     if (editingDept) {
-      setDepartments(prev => prev.map(d => d.id === editingDept.id ? { ...d, name, description } : d));
+      setDepartments(prev => prev.map(d => d.id === editingDept.id ? { ...d, name, atendiId, description } : d));
       toast.success('Departamento atualizado!');
     } else {
       const newDept = {
         id: Date.now(),
+        atendiId,
         name,
         description,
         staff: 0
@@ -80,13 +82,19 @@ const Departments = () => {
               <DialogHeader>
                 <DialogTitle>{editingDept ? 'Editar Departamento' : 'Novo Departamento'}</DialogTitle>
                 <DialogDescription>
-                  Preencha os dados do setor. A IA usará esses nomes para informar ao cliente sobre o transbordo.
+                  Preencha os dados do setor. O ID AtendiPRO é necessário para a integração de transbordo.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Setor</Label>
-                  <Input id="name" name="name" defaultValue={editingDept?.name} placeholder="Ex: Comercial, Financeiro..." required />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome do Setor</Label>
+                    <Input id="name" name="name" defaultValue={editingDept?.name} placeholder="Ex: Comercial" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="atendiId">ID AtendiPRO</Label>
+                    <Input id="atendiId" name="atendiId" defaultValue={editingDept?.atendiId} placeholder="Ex: 12345" required />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição Interna</Label>
@@ -107,7 +115,7 @@ const Departments = () => {
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="font-bold">Nome</TableHead>
+                <TableHead className="font-bold">Nome / ID</TableHead>
                 <TableHead className="font-bold">Descrição</TableHead>
                 <TableHead className="font-bold">Staff</TableHead>
                 <TableHead className="text-right font-bold">Ações</TableHead>
@@ -116,15 +124,21 @@ const Departments = () => {
             <TableBody>
               {departments.map((dept) => (
                 <TableRow key={dept.id} className="hover:bg-slate-50/50">
-                  <TableCell className="font-semibold text-blue-600">
-                    <div className="flex items-center gap-2">
-                      <Building2 size={16} className="text-slate-400" />
-                      {dept.name}
+                  <TableCell className="font-semibold">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 text-blue-600">
+                        <Building2 size={16} className="text-slate-400" />
+                        {dept.name}
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1 font-mono uppercase">
+                        <Fingerprint size={10} />
+                        ID: {dept.atendiId}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-gray-600 max-w-xs truncate">{dept.description}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="gap-1 font-normal">
+                    <Badge variant="secondary" className="gap-1 font-normal text-xs">
                       <Users size={12} />
                       {dept.staff} pessoas
                     </Badge>
