@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Plus, MoreVertical, Play, Power, Copy, ExternalLink, Bot } from 'lucide-react';
+import { Plus, MoreVertical, Play, Power, Copy, ExternalLink } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import AgentTester from '@/components/AgentTester';
 
-// Mock de dados para visualização inicial
 const initialAgents = [
   { id: '1', name: 'Agente de Vendas Natal', status: 'active', type: 'SDR', objective: 'Vender', updated: '2 horas atrás' },
   { id: '2', name: 'Suporte Técnico N1', status: 'inactive', type: 'Suporte', objective: 'Responder dúvidas', updated: '1 dia atrás' },
@@ -16,25 +16,31 @@ const initialAgents = [
 
 const Dashboard = () => {
   const [agents, setAgents] = useState(initialAgents);
+  const [testingAgent, setTestingAgent] = useState<string | null>(null);
 
   const toggleAgent = (id: string) => {
     setAgents(prev => prev.map(agent => {
       if (agent.id === id) {
         const newState = agent.status === 'active' ? 'inactive' : 'active';
         if (newState === 'active') {
-          // Desativa todos os outros se este estiver sendo ativado
           toast.success(`${agent.name} agora é o agente ativo.`);
           return { ...agent, status: 'active' };
         }
         return { ...agent, status: 'inactive' };
       }
-      // Se outro agente for ativado, este deve ser inativado
       return { ...agent, status: 'inactive' };
     }));
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {testingAgent && (
+        <AgentTester 
+          agentName={testingAgent} 
+          onClose={() => setTestingAgent(null)} 
+        />
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Painel de Agentes</h1>
@@ -83,7 +89,12 @@ const Dashboard = () => {
                   <Button variant="outline" className="flex-1 gap-2" size="sm" asChild>
                     <Link to={`/agents/edit/${agent.id}`}>Editar</Link>
                   </Button>
-                  <Button variant="secondary" className="gap-2" size="sm">
+                  <Button 
+                    variant="secondary" 
+                    className="gap-2" 
+                    size="sm"
+                    onClick={() => setTestingAgent(agent.name)}
+                  >
                     <Play size={14} />
                     Testar
                   </Button>
