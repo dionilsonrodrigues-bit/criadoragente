@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Building2, Globe, Key, Activity, Search, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building2, Globe, Key, Activity, Search, Plus, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,37 +15,90 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminDashboard = () => {
-  const [companies, setCompanies] = useState([
-    { id: 1, name: 'Empresa Alpha', agents: 4, status: 'Ativa', created: '12/05/2024' },
-    { id: 2, name: 'Beta Tech', agents: 2, status: 'Ativa', created: '15/05/2024' },
-    { id: 3, name: 'Gama Services', agents: 0, status: 'Pendente', created: '20/05/2024' },
-  ]);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [stats, setStats] = useState({
+    totalCompanies: 0,
+    totalAgents: 0,
+    activeAgents: 0
+  });
 
-  const stats = [
-    { label: 'Total Empresas', value: companies.length.toString(), icon: Building2, color: 'text-blue-600' },
-    { label: 'Agentes Criados', value: '458', icon: Activity, color: 'text-green-600' },
-    { label: 'Agentes Ativos', value: '98', icon: Globe, color: 'text-purple-600' },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const handleAddCompany = (e: React.FormEvent<HTMLFormElement>) => {
+  const fetchData = async () => {
+    setIsLoading(true);
+    
+    // Buscar empresas e seus agentes associados
+    const { data: companiesData, error: companiesError } = await supabase
+      .from('companies')
+      .select(`
+        *,
+        agents (id, status)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (companiesError) {
+      toast.error('Erro ao carregar empresas');
+    } else {
+      setCompanies(companiesData || []);
+      
+      // Calcular estatísticas
+      const totalAgents = companiesData?.reduce((acc, comp) => acc + (comp.agents?.length || 0), 0) || 0;
+      const activeAgents = companiesData?.reduce((acc, comp) => 
+        acc + (comp.agents?.filter((a: any) => a.status === 'active').length || 0), 0
+      ) || 0;
+
+      setStats({
+        totalCompanies: companiesData?.length || 0,
+        totalAgents,
+        activeAgents
+      });
+    }
+    
+    setIsLoading(false);
+  };
+
+  const handleAddCompany = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('companyName') as string;
     
-    setCompanies(prev => [
-      { id: Date.now(), name, agents: 0, status: 'Ativa', created: new Date().toLocaleDateString() },
-      ...prev
-    ]);
-    toast.success('Empresa cadastrada com sucesso!');
+    const { data, error } = await supabase
+      .from('companies')
+      .insert([{ name }])
+      .select();
+
+    if (error) {
+      toast.error('Erro ao cadastrar empresa');
+    } else {
+      toast.success('Empresa cadastrada com sucesso!');
+      fetchData();
+      // Fechar o dialog (o Shadcn Dialog precisa de controle de estado para fechar programaticamente, 
+      // mas como simplificação aqui o usuário pode fechar após o sucesso)
+    }
   };
+
+  const filteredCompanies = companies.filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const statsConfig = [
+    { label: 'Total Empresas', value: stats.totalCompanies.toString(), icon: Building2, color: 'text-blue-600' },
+    { label: 'Agentes Criados', value: stats.totalAgents.toString(), icon: Activity, color: 'text-green-600' },
+    { label: 'Agentes Ativos', value: stats.activeAgents.toString(), icon: Globe, color: 'text-purple-600' },
+  ];
 
   return (
     <div className="space-y-8">
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((stat) => (
+        {statsConfig.map((stat) => (
           <Card key={stat.label} className="border-none shadow-sm ring-1 ring-black/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -90,12 +143,17 @@ const AdminDashboard = () => {
 
         {/* Lista de Empresas */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h3 className="text-xl font-bold text-slate-900">Empresas Cadastradas</h3>
             <div className="flex gap-3">
-              <div className="relative w-64">
+              <div className="relative w-full md:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <Input className="pl-10" placeholder="Buscar empresa..." />
+                <Input 
+                  className="pl-10" 
+                  placeholder="Buscar empresa..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
               
               <Dialog>
@@ -128,26 +186,34 @@ const AdminDashboard = () => {
           </div>
           
           <div className="space-y-3">
-            {companies.map((company) => (
+            {isLoading ? (
+              <div className="h-40 flex items-center justify-center">
+                <Loader2 className="animate-spin text-blue-600" />
+              </div>
+            ) : filteredCompanies.length === 0 ? (
+              <p className="text-center py-10 text-gray-400 italic">Nenhuma empresa encontrada.</p>
+            ) : filteredCompanies.map((company) => (
               <Card key={company.id} className="hover:border-blue-200 transition-colors border-none shadow-sm ring-1 ring-black/5">
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-400">
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-400 uppercase">
                         {company.name.charAt(0)}
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-800">{company.name}</h4>
-                        <p className="text-xs text-gray-500">ID: #{company.id} | Criada em {company.created}</p>
+                        <p className="text-xs text-gray-500">
+                          ID: #{company.id.substring(0, 8)} | Criada em {new Date(company.created_at).toLocaleDateString()}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-6">
                       <div className="text-right">
                         <p className="text-xs font-medium text-gray-400 uppercase">Agentes</p>
-                        <p className="font-bold">{company.agents}</p>
+                        <p className="font-bold">{company.agents?.length || 0}</p>
                       </div>
-                      <Badge variant={company.status === 'Ativa' ? 'default' : 'secondary'} className={company.status === 'Ativa' ? 'bg-green-500' : ''}>
-                        {company.status}
+                      <Badge variant="default" className="bg-green-500">
+                        Ativa
                       </Badge>
                       <Button variant="outline" size="sm">Gerenciar</Button>
                     </div>
