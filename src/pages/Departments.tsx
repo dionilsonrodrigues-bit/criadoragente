@@ -38,17 +38,22 @@ const Departments = () => {
 
   const fetchDepartments = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('departments')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      toast.error('Erro ao carregar departamentos');
-    } else {
-      setDepartments(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error("Erro ao buscar:", error);
+      } else {
+        setDepartments(data || []);
+      }
+    } catch (err) {
+      console.error("Erro fatal:", err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -71,7 +76,6 @@ const Departments = () => {
         .eq('id', editingDept.id);
 
       if (error) {
-        console.error("Erro ao atualizar:", error);
         toast.error(`Erro ao atualizar: ${error.message}`);
       } else {
         toast.success('Departamento atualizado!');
@@ -84,10 +88,9 @@ const Departments = () => {
         .insert([payload]);
 
       if (error) {
-        console.error("Erro ao criar:", error);
         toast.error(`Erro ao criar: ${error.message}`);
       } else {
-        toast.success('Departamento criado com sucesso!');
+        toast.success('Departamento criado!');
         fetchDepartments();
         setIsDialogOpen(false);
       }
@@ -129,28 +132,28 @@ const Departments = () => {
               <DialogHeader>
                 <DialogTitle>{editingDept ? 'Editar Departamento' : 'Novo Departamento'}</DialogTitle>
                 <DialogDescription>
-                  Preencha os dados do setor. O ID AtendiPRO é necessário para a integração de transbordo.
+                  Preencha os dados do setor.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome do Setor</Label>
-                    <Input id="name" name="name" defaultValue={editingDept?.name} placeholder="Ex: Comercial" required />
+                    <Input id="name" name="name" defaultValue={editingDept?.name} placeholder="Ex: Vendas" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="atendiId">ID AtendiPRO</Label>
-                    <Input id="atendiId" name="atendiId" defaultValue={editingDept?.atendi_id} placeholder="Ex: 12345" required />
+                    <Input id="atendiId" name="atendiId" defaultValue={editingDept?.atendi_id} placeholder="Ex: 123" required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição Interna</Label>
-                  <Textarea id="description" name="description" defaultValue={editingDept?.description} placeholder="Para que serve este setor?" />
+                  <Textarea id="description" name="description" defaultValue={editingDept?.description} />
                 </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit">Salvar Departamento</Button>
+                <Button type="submit">Salvar</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -169,53 +172,28 @@ const Departments = () => {
                 <TableRow>
                   <TableHead className="font-bold">Nome / ID</TableHead>
                   <TableHead className="font-bold">Descrição</TableHead>
-                  <TableHead className="font-bold">Status</TableHead>
                   <TableHead className="text-right font-bold">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {departments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-gray-400">Nenhum departamento cadastrado.</TableCell>
+                    <TableCell colSpan={3} className="text-center py-8 text-gray-400">Nenhum departamento encontrado.</TableCell>
                   </TableRow>
                 ) : departments.map((dept) => (
-                  <TableRow key={dept.id} className="hover:bg-slate-50/50">
+                  <TableRow key={dept.id}>
                     <TableCell className="font-semibold">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2 text-blue-600">
-                          <Building2 size={16} className="text-slate-400" />
-                          {dept.name}
-                        </div>
-                        <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1 font-mono uppercase">
-                          <Fingerprint size={10} />
-                          ID: {dept.atendi_id}
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Building2 size={16} className="text-slate-400" />
+                        {dept.name} ({dept.atendi_id})
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-600 max-w-xs truncate">{dept.description}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="gap-1 font-normal text-xs">
-                        Ativo
-                      </Badge>
-                    </TableCell>
+                    <TableCell className="text-gray-600">{dept.description}</TableCell>
                     <TableCell className="text-right space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-slate-500"
-                        onClick={() => {
-                          setEditingDept(dept);
-                          setIsDialogOpen(true);
-                        }}
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => { setEditingDept(dept); setIsDialogOpen(true); }}>
                         <Edit2 size={14} />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50"
-                        onClick={() => handleDelete(dept.id)}
-                      >
+                      <Button variant="ghost" size="icon" className="text-red-400" onClick={() => handleDelete(dept.id)}>
                         <Trash2 size={14} />
                       </Button>
                     </TableCell>
