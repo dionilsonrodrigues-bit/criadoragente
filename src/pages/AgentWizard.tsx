@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { generateFinalPrompt, AgentData } from '@/lib/prompt-engine';
+import { supabase } from "@/integrations/supabase/client";
 
 const steps = [
   { id: 1, title: 'Identificação', icon: Info },
@@ -63,11 +64,14 @@ const DEFAULT_TRANSFER_TEMPLATE = `- Quando o cliente solicitar expressamente fa
 - Quando o cliente tiver uma dúvida técnica complexa que não consta no seu conhecimento.
 - Quando o assunto envolver negociações financeiras, cancelamentos ou reclamações críticas.`;
 
+const DEMO_COMPANY_ID = '12345678-1234-1234-1234-123456789012'; // Mock ID
+
 const AgentWizard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [formData, setFormData] = useState<AgentData>({
     name: '',
     objective: '',
@@ -82,37 +86,91 @@ const AgentWizard = () => {
   });
 
   useEffect(() => {
+    fetchDepartments();
     if (id) {
-      setIsLoading(true);
-      setTimeout(() => {
-        setFormData({
-          name: 'Agente de Vendas Natal (Editado)',
-          objective: 'vender',
-          type: 'sdr',
-          tone: 'persuasivo',
-          responseSize: 'medias',
-          allowEmoji: true,
-          basePrompt: 'Foque em oferecer o desconto de 20% para novos clientes.',
-          businessContext: 'Somos a maior loja de varejo da região...',
-          transferRule: 'Quando pedirem desconto maior que 20%',
-          transferDept: 'vendas',
-        });
-        setIsLoading(false);
-      }, 800);
+      fetchAgentData();
     }
   }, [id]);
+
+  const fetchDepartments = async () => {
+    const { data } = await supabase.from('departments').select('id, name');
+    setDepartments(data || []);
+  };
+
+  const fetchAgentData = async () => {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('agents')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      toast.error('Erro ao carregar dados do agente');
+      navigate('/');
+    } else {
+      setFormData({
+        name: data.name,
+        objective: data.objective || '',
+        type: data.type || '',
+        tone: data.tone || 'amigável',
+        responseSize: data.response_size || 'médias',
+        allowEmoji: data.allow_emoji ?? true,
+        basePrompt: data.base_prompt || DEFAULT_BRAIN_TEMPLATE,
+        businessContext: data.business_context || '',
+        transferRule: data.transfer_rule || DEFAULT_TRANSFER_TEMPLATE,
+        transferDept: data.transfer_dept_id || '',
+      });
+    }
+    setIsLoading(false);
+  };
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, steps.length));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
-  const handleSave = () => {
-    toast.success(id ? 'Agente atualizado com sucesso!' : 'Agente criado com sucesso!');
-    navigate('/');
+  const handleSave = async () => {
+    setIsLoading(true);
+    const payload = {
+      name: formData.name,
+      objective: formData.objective,
+      type: formData.type,
+      tone: formData.tone,
+      response_size: formData.responseSize,
+      allow_emoji: formData.allowEmoji,
+      base_prompt: formData.basePrompt,
+      business_context: formData.businessContext,
+      transfer_rule: formData.transferRule,
+      transfer_dept_id: formData.transferDept || null,
+      company_id: DEMO_COMPANY_ID,
+      updated_at: new Date().toISOString()
+    };
+
+    let error;
+    if (id) {
+      const { error: updateError } = await supabase
+        .from('agents')
+        .update(payload)
+        .eq('id', id);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from('agents')
+        .insert([payload]);
+      error = insertError;
+    }
+
+    if (error) {
+      toast.error('Erro ao salvar agente');
+    } else {
+      toast.success(id ? 'Agente atualizado!' : 'Agente criado!');
+      navigate('/');
+    }
+    setIsLoading(false);
   };
 
   const finalPrompt = generateFinalPrompt(formData);
 
-  if (isLoading) {
+  if (isLoading && id) {
     return (
       <div className="h-96 flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-blue-600" size={40} />
@@ -185,7 +243,7 @@ const AgentWizard = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="profissional">Profissional e formal</SelectItem>
-                    <SelectItem value="amigavel">Amigável e acolhedor</SelectItem>
+                    <SelectItem value="amigável">Amigável e acolhedor</SelectItem>
                     <SelectItem value="direto">Direto e objetivo</SelectItem>
                     <SelectItem value="persuasivo">Persuasivo e focado em vendas</SelectItem>
                   </SelectContent>
@@ -199,7 +257,7 @@ const AgentWizard = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="curtas">Curtas e rápidas</SelectItem>
-                    <SelectItem value="medias">Tamanho médio</SelectItem>
+                    <SelectItem value="médias">Tamanho médio</SelectItem>
                     <SelectItem value="explicativas">Detalhadas e explicativas</SelectItem>
                   </SelectContent>
                 </Select>
@@ -281,9 +339,10 @@ const AgentWizard = () => {
                   <SelectValue placeholder="Selecione o departamento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="vendas">Vendas</SelectItem>
-                  <SelectItem value="suporte">Suporte Técnico</SelectItem>
-                  <SelectItem value="financeiro">Financeiro</SelectItem>
+                  {departments.map(dept => (
+                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                  ))}
+                  {departments.length === 0 && <SelectItem value="none" disabled>Nenhum setor cadastrado</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -367,7 +426,7 @@ const AgentWizard = () => {
                   <p className="text-gray-500 text-sm mt-1">Preencha os campos abaixo para configurar o comportamento da IA.</p>
                 </div>
                 {id && (
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Editando Agente #{id}</Badge>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Editando Agente #{id.substring(0, 8)}</Badge>
                 )}
               </div>
             </div>
@@ -378,7 +437,7 @@ const AgentWizard = () => {
             <Button 
               variant="ghost" 
               onClick={prevStep} 
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || isLoading}
               className="gap-2 text-gray-500 hover:text-slate-900"
             >
               <ChevronLeft size={18} />
@@ -386,8 +445,12 @@ const AgentWizard = () => {
             </Button>
 
             {currentStep === steps.length ? (
-              <Button onClick={handleSave} className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 px-8">
-                <Save size={18} />
+              <Button 
+                onClick={handleSave} 
+                disabled={isLoading}
+                className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 px-8"
+              >
+                {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                 {id ? 'Atualizar Agente' : 'Salvar Agente'}
               </Button>
             ) : (
