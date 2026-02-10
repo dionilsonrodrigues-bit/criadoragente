@@ -26,7 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 
-const DEMO_COMPANY_ID = '12345678-1234-1234-1234-123456789012'; // ID fixo para demo até termos Auth
+const DEMO_COMPANY_ID = '12345678-1234-1234-1234-123456789012'; // Mock ID
 
 const Departments = () => {
   const [departments, setDepartments] = useState<any[]>([]);
@@ -64,7 +64,7 @@ const Departments = () => {
       name,
       atendi_id: atendiId,
       description,
-      company_id: DEMO_COMPANY_ID // Mock ID
+      company_id: null // Alterado para null temporariamente se não houver empresa criada
     };
 
     if (editingDept) {
@@ -73,24 +73,29 @@ const Departments = () => {
         .update(payload)
         .eq('id', editingDept.id);
 
-      if (error) toast.error('Erro ao atualizar departamento');
-      else {
+      if (error) {
+        console.error("Erro ao atualizar:", error);
+        toast.error(`Erro ao atualizar: ${error.message}`);
+      } else {
         toast.success('Departamento atualizado!');
         fetchDepartments();
+        setIsDialogOpen(false);
       }
     } else {
       const { error } = await supabase
         .from('departments')
         .insert([payload]);
 
-      if (error) toast.error('Erro ao criar departamento');
-      else {
+      if (error) {
+        console.error("Erro ao criar:", error);
+        toast.error(`Erro ao criar: ${error.message}`);
+      } else {
         toast.success('Departamento criado com sucesso!');
         fetchDepartments();
+        setIsDialogOpen(false);
       }
     }
     
-    setIsDialogOpen(false);
     setEditingDept(null);
   };
 
