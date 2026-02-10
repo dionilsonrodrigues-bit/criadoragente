@@ -26,8 +26,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 
-const DEMO_COMPANY_ID = '12345678-1234-1234-1234-123456789012'; // Mock ID
-
 const Departments = () => {
   const [departments, setDepartments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,11 +58,10 @@ const Departments = () => {
     const atendiId = formData.get('atendiId') as string;
     const description = formData.get('description') as string;
 
-    const payload = {
+    const payload: any = {
       name,
       atendi_id: atendiId,
-      description,
-      company_id: null // Alterado para null temporariamente se não houver empresa criada
+      description
     };
 
     if (editingDept) {
