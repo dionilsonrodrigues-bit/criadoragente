@@ -44,6 +44,7 @@ const AdminDashboard = () => {
       .order('created_at', { ascending: false });
 
     if (companiesError) {
+      console.error("Erro ao buscar empresas:", companiesError);
       toast.error('Erro ao carregar empresas');
     } else {
       setCompanies(companiesData || []);
@@ -71,11 +72,11 @@ const AdminDashboard = () => {
     
     const { error } = await supabase
       .from('companies')
-      .insert([{ name, atendi_id }])
-      .select();
+      .insert([{ name, atendi_id }]);
 
     if (error) {
-      toast.error('Erro ao cadastrar empresa');
+      console.error("Erro detalhado ao cadastrar empresa:", error);
+      toast.error(`Erro: ${error.message || 'Falha ao cadastrar'}`);
     } else {
       toast.success('Empresa cadastrada com sucesso!');
       setIsDialogOpen(false);
