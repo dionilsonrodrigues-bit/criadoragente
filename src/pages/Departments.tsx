@@ -69,6 +69,8 @@ const Departments = () => {
       description
     };
 
+    console.log("Tentando salvar departamento:", payload);
+
     if (editingDept) {
       const { error } = await supabase
         .from('departments')
@@ -76,6 +78,7 @@ const Departments = () => {
         .eq('id', editingDept.id);
 
       if (error) {
+        console.error("Erro no Update:", error);
         toast.error(`Erro ao atualizar: ${error.message}`);
       } else {
         toast.success('Departamento atualizado!');
@@ -88,6 +91,7 @@ const Departments = () => {
         .insert([payload]);
 
       if (error) {
+        console.error("Erro no Insert:", error);
         toast.error(`Erro ao criar: ${error.message}`);
       } else {
         toast.success('Departamento criado!');
