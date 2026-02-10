@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Globe, Key, Activity, Search, Plus, Loader2 } from 'lucide-react';
+import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Fingerprint } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ const AdminDashboard = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [stats, setStats] = useState({
     totalCompanies: 0,
     totalAgents: 0,
@@ -34,7 +35,6 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setIsLoading(true);
     
-    // Buscar empresas e seus agentes associados
     const { data: companiesData, error: companiesError } = await supabase
       .from('companies')
       .select(`
@@ -48,7 +48,6 @@ const AdminDashboard = () => {
     } else {
       setCompanies(companiesData || []);
       
-      // Calcular estatísticas
       const totalAgents = companiesData?.reduce((acc, comp) => acc + (comp.agents?.length || 0), 0) || 0;
       const activeAgents = companiesData?.reduce((acc, comp) => 
         acc + (comp.agents?.filter((a: any) => a.status === 'active').length || 0), 0
@@ -68,24 +67,25 @@ const AdminDashboard = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('companyName') as string;
+    const atendi_id = formData.get('atendiId') as string;
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('companies')
-      .insert([{ name }])
+      .insert([{ name, atendi_id }])
       .select();
 
     if (error) {
       toast.error('Erro ao cadastrar empresa');
     } else {
       toast.success('Empresa cadastrada com sucesso!');
+      setIsDialogOpen(false);
       fetchData();
-      // Fechar o dialog (o Shadcn Dialog precisa de controle de estado para fechar programaticamente, 
-      // mas como simplificação aqui o usuário pode fechar após o sucesso)
     }
   };
 
   const filteredCompanies = companies.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.atendi_id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const statsConfig = [
@@ -150,13 +150,13 @@ const AdminDashboard = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <Input 
                   className="pl-10" 
-                  placeholder="Buscar empresa..." 
+                  placeholder="Buscar empresa ou ID..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               
-              <Dialog>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-2">
                     <Plus size={18} /> Nova Empresa
@@ -174,6 +174,10 @@ const AdminDashboard = () => {
                       <div className="space-y-2">
                         <Label htmlFor="companyName">Nome da Empresa</Label>
                         <Input id="companyName" name="companyName" placeholder="Ex: Atacadão S.A." required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="atendiId">ID da Empresa no AtendiPRO</Label>
+                        <Input id="atendiId" name="atendiId" placeholder="Ex: 12345" required />
                       </div>
                     </div>
                     <DialogFooter>
@@ -201,9 +205,14 @@ const AdminDashboard = () => {
                         {company.name.charAt(0)}
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-800">{company.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-slate-800">{company.name}</h4>
+                          <Badge variant="outline" className="text-[10px] font-mono py-0 h-4 bg-slate-50">
+                            ID: {company.atendi_id || 'N/A'}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-gray-500">
-                          ID: #{company.id.substring(0, 8)} | Criada em {new Date(company.created_at).toLocaleDateString()}
+                          UUID: #{company.id.substring(0, 8)} | Criada em {new Date(company.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
