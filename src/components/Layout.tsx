@@ -1,18 +1,20 @@
 import React from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Bot, 
-  Building2, 
   Settings, 
   ShieldCheck, 
   LogOut,
   Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from './AuthProvider';
 
 const Layout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
@@ -20,6 +22,11 @@ const Layout = () => {
     { icon: Users, label: 'Departamentos', path: '/departments' },
     { icon: ShieldCheck, label: 'Super Admin', path: '/admin' },
   ];
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -52,15 +59,20 @@ const Layout = () => {
 
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center gap-3 px-3 py-2 text-slate-400">
-            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">
-              EM
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white uppercase">
+              {user?.email?.charAt(0) ?? 'U'}
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium text-white truncate">Empresa Demo</p>
-              <p className="text-xs truncate">Plano Pro</p>
+              <p className="text-sm font-medium text-white truncate">
+                {user?.email?.split('@')[0]}
+              </p>
+              <p className="text-xs truncate text-slate-500">Plano Pro</p>
             </div>
           </div>
-          <button className="flex items-center gap-3 px-3 py-2 mt-2 w-full text-slate-400 hover:text-white transition-colors">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-2 mt-2 w-full text-slate-400 hover:text-red-400 transition-colors"
+          >
             <LogOut size={18} />
             <span className="text-sm">Sair</span>
           </button>
@@ -75,7 +87,7 @@ const Layout = () => {
           </h2>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full border">
-              Empresa ID: #12345
+              ID: {user?.id.substring(0, 8)}
             </span>
           </div>
         </header>
