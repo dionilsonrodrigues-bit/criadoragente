@@ -64,14 +64,14 @@ const DEFAULT_TRANSFER_TEMPLATE = `- Quando o cliente solicitar expressamente fa
 - Quando o cliente tiver uma dúvida técnica complexa que não consta no seu conhecimento.
 - Quando o assunto envolver negociações financeiras, cancelamentos ou reclamações críticas.`;
 
-const DEMO_COMPANY_ID = '12345678-1234-1234-1234-123456789012'; // Mock ID
-
 const AgentWizard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [departments, setDepartments] = useState<any[]>([]);
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState<AgentData>({
     name: '',
     objective: '',
@@ -86,11 +86,25 @@ const AgentWizard = () => {
   });
 
   useEffect(() => {
-    fetchDepartments();
-    if (id) {
-      fetchAgentData();
-    }
+    const initData = async () => {
+      setIsLoading(true);
+      await fetchDepartments();
+      await fetchInitialCompany();
+      if (id) {
+        await fetchAgentData();
+      }
+      setIsLoading(false);
+    };
+    initData();
   }, [id]);
+
+  const fetchInitialCompany = async () => {
+    // Busca a primeira empresa cadastrada para associar o agente
+    const { data } = await supabase.from('companies').select('id').limit(1).single();
+    if (data) {
+      setCompanyId(data.id);
+    }
+  };
 
   const fetchDepartments = async () => {
     const { data } = await supabase.from('departments').select('id, name');
@@ -98,7 +112,6 @@ const AgentWizard = () => {
   };
 
   const fetchAgentData = async () => {
-    setIsLoading(true);
     const { data, error } = await supabase
       .from('agents')
       .select('*')
@@ -121,8 +134,8 @@ const AgentWizard = () => {
         transferRule: data.transfer_rule || DEFAULT_TRANSFER_TEMPLATE,
         transferDept: data.transfer_dept_id || '',
       });
+      if (data.company_id) setCompanyId(data.company_id);
     }
-    setIsLoading(false);
   };
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, steps.length));
@@ -130,6 +143,15 @@ const AgentWizard = () => {
 
   const handleSave = async () => {
     setIsLoading(true);
+    
+    // Verificação básica
+    if (!formData.name) {
+      toast.error('O nome do agente é obrigatório');
+      setCurrentStep(1);
+      setIsLoading(false);
+      return;
+    }
+
     const payload = {
       name: formData.name,
       objective: formData.objective,
@@ -141,7 +163,7 @@ const AgentWizard = () => {
       business_context: formData.businessContext,
       transfer_rule: formData.transferRule,
       transfer_dept_id: formData.transferDept || null,
-      company_id: DEMO_COMPANY_ID,
+      company_id: companyId, // Usa o ID real buscado ou nulo
       updated_at: new Date().toISOString()
     };
 
@@ -160,7 +182,8 @@ const AgentWizard = () => {
     }
 
     if (error) {
-      toast.error('Erro ao salvar agente');
+      console.error("Erro ao salvar:", error);
+      toast.error(`Erro ao salvar agente: ${error.message}`);
     } else {
       toast.success(id ? 'Agente atualizado!' : 'Agente criado!');
       navigate('/');
@@ -170,11 +193,11 @@ const AgentWizard = () => {
 
   const finalPrompt = generateFinalPrompt(formData);
 
-  if (isLoading && id) {
+  if (isLoading && (id || !companyId)) {
     return (
       <div className="h-96 flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-blue-600" size={40} />
-        <p className="text-gray-500 font-medium">Carregando dados do agente...</p>
+        <p className="text-gray-500 font-medium">Preparando ambiente...</p>
       </div>
     );
   }
