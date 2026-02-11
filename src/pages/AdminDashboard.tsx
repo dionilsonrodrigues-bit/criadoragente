@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Fingerprint } from 'lucide-react';
+import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +26,10 @@ const AdminDashboard = () => {
   const [companies, setCompanies] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  
   const [stats, setStats] = useState({
     totalCompanies: 0,
     totalAgents: 0,
@@ -75,11 +83,48 @@ const AdminDashboard = () => {
       .insert([{ name, atendi_id }]);
 
     if (error) {
-      console.error("Erro detalhado ao cadastrar empresa:", error);
-      toast.error(`Erro: ${error.message || 'Falha ao cadastrar'}`);
+      toast.error(`Erro: ${error.message}`);
     } else {
       toast.success('Empresa cadastrada com sucesso!');
-      setIsDialogOpen(false);
+      setIsAddDialogOpen(false);
+      fetchData();
+    }
+  };
+
+  const handleUpdateCompany = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedCompany) return;
+
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('editName') as string;
+    const atendi_id = formData.get('editAtendiId') as string;
+    
+    const { error } = await supabase
+      .from('companies')
+      .update({ name, atendi_id })
+      .eq('id', selectedCompany.id);
+
+    if (error) {
+      toast.error(`Erro: ${error.message}`);
+    } else {
+      toast.success('Empresa atualizada!');
+      setIsEditDialogOpen(false);
+      fetchData();
+    }
+  };
+
+  const handleDeleteCompany = async (id: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a empresa "${name}"? Todos os agentes vinculados serão removidos.`)) return;
+
+    const { error } = await supabase
+      .from('companies')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Erro ao excluir empresa');
+    } else {
+      toast.success('Empresa removida com sucesso');
       fetchData();
     }
   };
@@ -89,17 +134,15 @@ const AdminDashboard = () => {
     c.atendi_id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const statsConfig = [
-    { label: 'Total Empresas', value: stats.totalCompanies.toString(), icon: Building2, color: 'text-blue-600' },
-    { label: 'Agentes Criados', value: stats.totalAgents.toString(), icon: Activity, color: 'text-green-600' },
-    { label: 'Agentes Ativos', value: stats.activeAgents.toString(), icon: Globe, color: 'text-purple-600' },
-  ];
-
   return (
     <div className="space-y-8">
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {statsConfig.map((stat) => (
+        {[
+          { label: 'Total Empresas', value: stats.totalCompanies, icon: Building2, color: 'text-blue-600' },
+          { label: 'Agentes Criados', value: stats.totalAgents, icon: Activity, color: 'text-green-600' },
+          { label: 'Agentes Ativos', value: stats.activeAgents, icon: Globe, color: 'text-purple-600' },
+        ].map((stat) => (
           <Card key={stat.label} className="border-none shadow-sm ring-1 ring-black/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -157,36 +200,9 @@ const AdminDashboard = () => {
                 />
               </div>
               
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus size={18} /> Nova Empresa
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <form onSubmit={handleAddCompany}>
-                    <DialogHeader>
-                      <DialogTitle>Cadastrar Nova Empresa</DialogTitle>
-                      <DialogDescription>
-                        Crie uma nova instância para um cliente. Ele terá seu próprio painel de agentes.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4 space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="companyName">Nome da Empresa</Label>
-                        <Input id="companyName" name="companyName" placeholder="Ex: Atacadão S.A." required />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="atendiId">ID da Empresa no AtendiPRO</Label>
-                        <Input id="atendiId" name="atendiId" placeholder="Ex: 12345" required />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit">Cadastrar Empresa</Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <Button className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
+                <Plus size={18} /> Nova Empresa
+              </Button>
             </div>
           </div>
           
@@ -217,15 +233,34 @@ const AdminDashboard = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
+                    <div className="flex items-center gap-4">
+                      <div className="text-right hidden sm:block">
                         <p className="text-xs font-medium text-gray-400 uppercase">Agentes</p>
                         <p className="font-bold">{company.agents?.length || 0}</p>
                       </div>
-                      <Badge variant="default" className="bg-green-500">
-                        Ativa
-                      </Badge>
-                      <Button variant="outline" size="sm">Gerenciar</Button>
+                      <Badge variant="default" className="bg-green-500">Ativa</Badge>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            Gerenciar <MoreVertical size={14} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedCompany(company);
+                            setIsEditDialogOpen(true);
+                          }}>
+                            <Edit2 size={14} className="mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={() => handleDeleteCompany(company.id, company.name)}
+                          >
+                            <Trash2 size={14} className="mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>
@@ -234,6 +269,72 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Dialog: Nova Empresa */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleAddCompany}>
+            <DialogHeader>
+              <DialogTitle>Cadastrar Nova Empresa</DialogTitle>
+              <DialogDescription>
+                Crie uma nova instância para um cliente.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Nome da Empresa</Label>
+                <Input id="companyName" name="companyName" placeholder="Ex: Atacadão S.A." required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="atendiId">ID da Empresa no AtendiPRO</Label>
+                <Input id="atendiId" name="atendiId" placeholder="Ex: 12345" required />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit">Cadastrar Empresa</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Editar Empresa */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleUpdateCompany}>
+            <DialogHeader>
+              <DialogTitle>Editar Empresa</DialogTitle>
+              <DialogDescription>
+                Atualize os dados de identificação da empresa.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="editName">Nome da Empresa</Label>
+                <Input 
+                  id="editName" 
+                  name="editName" 
+                  defaultValue={selectedCompany?.name} 
+                  required 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editAtendiId">ID da Empresa no AtendiPRO</Label>
+                <Input 
+                  id="editAtendiId" 
+                  name="editAtendiId" 
+                  defaultValue={selectedCompany?.atendi_id} 
+                  required 
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit">Salvar Alterações</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
