@@ -12,7 +12,9 @@ import {
   ShieldAlert,
   Target,
   Copy,
-  Loader2
+  Loader2,
+  Edit3,
+  List
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +73,11 @@ const AgentWizard = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [departments, setDepartments] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
+
+  // States para controlar inputs personalizados
+  const [isCustomObjective, setIsCustomObjective] = useState(false);
+  const [isCustomType, setIsCustomType] = useState(false);
+  const [isCustomTone, setIsCustomTone] = useState(false);
   
   const [formData, setFormData] = useState<AgentData>({
     name: '',
@@ -99,7 +106,6 @@ const AgentWizard = () => {
   }, [id]);
 
   const fetchInitialCompany = async () => {
-    // Busca a primeira empresa cadastrada para associar o agente
     const { data } = await supabase.from('companies').select('id').limit(1).single();
     if (data) {
       setCompanyId(data.id);
@@ -130,10 +136,20 @@ const AgentWizard = () => {
         responseSize: data.response_size || 'médias',
         allowEmoji: data.allow_emoji ?? true,
         basePrompt: data.base_prompt || DEFAULT_BRAIN_TEMPLATE,
-        businessContext: data.business_context || '',
-        transferRule: data.transfer_rule || DEFAULT_TRANSFER_TEMPLATE,
-        transferDept: data.transfer_dept_id || '',
-      });
+        business_context: data.business_context || '',
+        transfer_rule: data.transfer_rule || DEFAULT_TRANSFER_TEMPLATE,
+        transfer_dept_id: data.transfer_dept_id || '',
+      } as any);
+
+      // Checar se os valores são personalizados (não estão na lista padrão)
+      const defaultObjectives = ['vender', 'qualificar', 'suporte', 'triagem'];
+      const defaultTypes = ['sdr', 'suporte', 'recepcionista', 'pos-venda'];
+      const defaultTones = ['profissional', 'amigável', 'direto', 'persuasivo'];
+
+      if (data.objective && !defaultObjectives.includes(data.objective)) setIsCustomObjective(true);
+      if (data.type && !defaultTypes.includes(data.type)) setIsCustomType(true);
+      if (data.tone && !defaultTones.includes(data.tone)) setIsCustomTone(true);
+      
       if (data.company_id) setCompanyId(data.company_id);
     }
   };
@@ -144,7 +160,6 @@ const AgentWizard = () => {
   const handleSave = async () => {
     setIsLoading(true);
     
-    // Verificação básica
     if (!formData.name) {
       toast.error('O nome do agente é obrigatório');
       setCurrentStep(1);
@@ -163,7 +178,7 @@ const AgentWizard = () => {
       business_context: formData.businessContext,
       transfer_rule: formData.transferRule,
       transfer_dept_id: formData.transferDept || null,
-      company_id: companyId, // Usa o ID real buscado ou nulo
+      company_id: companyId,
       updated_at: new Date().toISOString()
     };
 
@@ -193,15 +208,6 @@ const AgentWizard = () => {
 
   const finalPrompt = generateFinalPrompt(formData);
 
-  if (isLoading && (id || !companyId)) {
-    return (
-      <div className="h-96 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="animate-spin text-blue-600" size={40} />
-        <p className="text-gray-500 font-medium">Preparando ambiente...</p>
-      </div>
-    );
-  }
-
   const renderStepContent = () => {
     switch(currentStep) {
       case 1:
@@ -224,32 +230,76 @@ const AgentWizard = () => {
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Objetivo Principal</Label>
-                <Select value={formData.objective} onValueChange={(v) => setFormData({...formData, objective: v})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o que o agente deve fazer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="vender">Vender produtos/serviços</SelectItem>
-                    <SelectItem value="qualificar">Qualificar Leads</SelectItem>
-                    <SelectItem value="suporte">Responder dúvidas (Suporte)</SelectItem>
-                    <SelectItem value="triagem">Direcionar atendimento</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex justify-between items-center">
+                  <Label>Objetivo Principal</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-[10px] h-6 px-2 gap-1"
+                    onClick={() => {
+                      setIsCustomObjective(!isCustomObjective);
+                      if (!isCustomObjective) setFormData({...formData, objective: ''});
+                    }}
+                  >
+                    {isCustomObjective ? <List size={12} /> : <Edit3 size={12} />}
+                    {isCustomObjective ? 'Ver Lista' : 'Personalizar'}
+                  </Button>
+                </div>
+                {isCustomObjective ? (
+                  <Input 
+                    placeholder="Digite o objetivo personalizado..."
+                    value={formData.objective}
+                    onChange={(e) => setFormData({...formData, objective: e.target.value})}
+                  />
+                ) : (
+                  <Select value={formData.objective} onValueChange={(v) => setFormData({...formData, objective: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o que o agente deve fazer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vender">Vender produtos/serviços</SelectItem>
+                      <SelectItem value="qualificar">Qualificar Leads</SelectItem>
+                      <SelectItem value="suporte">Responder dúvidas (Suporte)</SelectItem>
+                      <SelectItem value="triagem">Direcionar atendimento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-2">
-                <Label>Tipo de Agente</Label>
-                <Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o cargo do agente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sdr">SDR / Pré-vendas</SelectItem>
-                    <SelectItem value="suporte">Analista de Suporte</SelectItem>
-                    <SelectItem value="recepcionista">Recepcionista Virtual</SelectItem>
-                    <SelectItem value="pos-venda">Pós-venda</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex justify-between items-center">
+                  <Label>Tipo de Agente</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-[10px] h-6 px-2 gap-1"
+                    onClick={() => {
+                      setIsCustomType(!isCustomType);
+                      if (!isCustomType) setFormData({...formData, type: ''});
+                    }}
+                  >
+                    {isCustomType ? <List size={12} /> : <Edit3 size={12} />}
+                    {isCustomType ? 'Ver Lista' : 'Personalizar'}
+                  </Button>
+                </div>
+                {isCustomType ? (
+                  <Input 
+                    placeholder="Digite o cargo personalizado..."
+                    value={formData.type}
+                    onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  />
+                ) : (
+                  <Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o cargo do agente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sdr">SDR / Pré-vendas</SelectItem>
+                      <SelectItem value="suporte">Analista de Suporte</SelectItem>
+                      <SelectItem value="recepcionista">Recepcionista Virtual</SelectItem>
+                      <SelectItem value="pos-venda">Pós-venda</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </div>
@@ -257,20 +307,42 @@ const AgentWizard = () => {
       case 3:
         return (
           <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>Tom de Voz</Label>
-                <Select value={formData.tone} onValueChange={(v) => setFormData({...formData, tone: v})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="profissional">Profissional e formal</SelectItem>
-                    <SelectItem value="amigável">Amigável e acolhedor</SelectItem>
-                    <SelectItem value="direto">Direto e objetivo</SelectItem>
-                    <SelectItem value="persuasivo">Persuasivo e focado em vendas</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex justify-between items-center">
+                  <Label>Tom de Voz</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-[10px] h-6 px-2 gap-1"
+                    onClick={() => {
+                      setIsCustomTone(!isCustomTone);
+                      if (!isCustomTone) setFormData({...formData, tone: 'amigável'});
+                    }}
+                  >
+                    {isCustomTone ? <List size={12} /> : <Edit3 size={12} />}
+                    {isCustomTone ? 'Ver Lista' : 'Personalizar'}
+                  </Button>
+                </div>
+                {isCustomTone ? (
+                  <Input 
+                    placeholder="Digite o tom personalizado..."
+                    value={formData.tone}
+                    onChange={(e) => setFormData({...formData, tone: e.target.value})}
+                  />
+                ) : (
+                  <Select value={formData.tone} onValueChange={(v) => setFormData({...formData, tone: v})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="profissional">Profissional e formal</SelectItem>
+                      <SelectItem value="amigável">Amigável e acolhedor</SelectItem>
+                      <SelectItem value="direto">Direto e objetivo</SelectItem>
+                      <SelectItem value="persuasivo">Persuasivo e focado em vendas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Tamanho das Respostas</Label>
@@ -318,7 +390,6 @@ const AgentWizard = () => {
               value={formData.basePrompt}
               onChange={(e) => setFormData({...formData, basePrompt: e.target.value})}
             />
-            <p className="text-[11px] text-gray-400 italic">Dica: Utilize a estrutura de tópicos para melhores resultados com a IA.</p>
           </div>
         );
       case 5:
@@ -446,7 +517,7 @@ const AgentWizard = () => {
                     <span className="bg-slate-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm">{currentStep}</span>
                     {steps[currentStep - 1].title}
                   </h3>
-                  <p className="text-gray-500 text-sm mt-1">Preencha os campos abaixo para configurar o comportamento da IA.</p>
+                  <p className="text-gray-500 text-sm mt-1">Configure as definições fundamentais do agente.</p>
                 </div>
                 {id && (
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Editando Agente #{id.substring(0, 8)}</Badge>
