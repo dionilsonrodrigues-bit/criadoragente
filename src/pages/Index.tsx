@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MoreVertical, Play, Power, Copy, ExternalLink, Loader2, Trash2 } from 'lucide-react';
+import { Plus, MoreVertical, Power, Copy, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import AgentTester from '@/components/AgentTester';
 import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
@@ -18,7 +17,6 @@ import {
 const Dashboard = () => {
   const [agents, setAgents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [testingAgent, setTestingAgent] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAgents();
@@ -81,13 +79,6 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8 relative">
-      {testingAgent && (
-        <AgentTester 
-          agentName={testingAgent} 
-          onClose={() => setTestingAgent(null)} 
-        />
-      )}
-
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Painel de Agentes</h1>
@@ -161,17 +152,8 @@ const Dashboard = () => {
                     />
                   </div>
                   <div className="flex gap-2 mt-2">
-                    <Button variant="outline" className="flex-1 gap-2" size="sm" asChild>
+                    <Button variant="outline" className="w-full gap-2" size="sm" asChild>
                       <Link to={`/agents/edit/${agent.id}`}>Configurar</Link>
-                    </Button>
-                    <Button 
-                      variant="secondary" 
-                      className="gap-2" 
-                      size="sm"
-                      onClick={() => setTestingAgent(agent.name)}
-                    >
-                      <Play size={14} />
-                      Testar
                     </Button>
                   </div>
                 </div>
