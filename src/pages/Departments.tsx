@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, Edit2, Trash2, Building2, Fingerprint, Loader2 } from 'lucide-react';
+import { Plus, Users, Edit2, Trash2, Building2, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { 
   Table, 
@@ -9,7 +9,6 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -69,8 +68,6 @@ const Departments = () => {
       description
     };
 
-    console.log("Tentando salvar departamento:", payload);
-
     if (editingDept) {
       const { error } = await supabase
         .from('departments')
@@ -78,7 +75,6 @@ const Departments = () => {
         .eq('id', editingDept.id);
 
       if (error) {
-        console.error("Erro no Update:", error);
         toast.error(`Erro ao atualizar: ${error.message}`);
       } else {
         toast.success('Departamento atualizado!');
@@ -91,7 +87,6 @@ const Departments = () => {
         .insert([payload]);
 
       if (error) {
-        console.error("Erro no Insert:", error);
         toast.error(`Erro ao criar: ${error.message}`);
       } else {
         toast.success('Departamento criado!');
@@ -104,6 +99,8 @@ const Departments = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm('Deseja realmente excluir este departamento?')) return;
+    
     const { error } = await supabase
       .from('departments')
       .delete()
@@ -136,7 +133,7 @@ const Departments = () => {
               <DialogHeader>
                 <DialogTitle>{editingDept ? 'Editar Departamento' : 'Novo Departamento'}</DialogTitle>
                 <DialogDescription>
-                  Preencha os dados do setor.
+                  Preencha os dados do setor para que a IA saiba para onde transferir.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
@@ -152,7 +149,7 @@ const Departments = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Descrição Interna</Label>
-                  <Textarea id="description" name="description" defaultValue={editingDept?.description} />
+                  <Textarea id="description" name="description" defaultValue={editingDept?.description} placeholder="Para que serve este setor?" />
                 </div>
               </div>
               <DialogFooter>
@@ -189,15 +186,15 @@ const Departments = () => {
                     <TableCell className="font-semibold">
                       <div className="flex items-center gap-2">
                         <Building2 size={16} className="text-slate-400" />
-                        {dept.name} ({dept.atendi_id})
+                        {dept.name} <span className="text-xs text-gray-400 font-normal">({dept.atendi_id})</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-600">{dept.description}</TableCell>
+                    <TableCell className="text-gray-600">{dept.description || '-'}</TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button variant="ghost" size="icon" onClick={() => { setEditingDept(dept); setIsDialogOpen(true); }}>
                         <Edit2 size={14} />
                       </Button>
-                      <Button variant="ghost" size="icon" className="text-red-400" onClick={() => handleDelete(dept.id)}>
+                      <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(dept.id)}>
                         <Trash2 size={14} />
                       </Button>
                     </TableCell>
