@@ -30,28 +30,39 @@ const Departments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<any>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDepartments();
+    fetchInitialData();
   }, []);
 
-  const fetchDepartments = async () => {
+  const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error("Erro ao buscar:", error);
-      } else {
-        setDepartments(data || []);
+      // Buscar a empresa para vincular o departamento
+      const { data: companyData } = await supabase.from('companies').select('id').limit(1).single();
+      if (companyData) {
+        setCompanyId(companyData.id);
       }
+
+      await fetchDepartments();
     } catch (err) {
       console.error("Erro fatal:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    const { data, error } = await supabase
+      .from('departments')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error("Erro ao buscar:", error);
+    } else {
+      setDepartments(data || []);
     }
   };
 
@@ -65,7 +76,8 @@ const Departments = () => {
     const payload: any = {
       name,
       atendi_id: atendiId,
-      description
+      description,
+      company_id: companyId // Vincular ao ID da empresa
     };
 
     if (editingDept) {
