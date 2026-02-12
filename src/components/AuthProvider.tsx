@@ -26,45 +26,55 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log("[Auth] Buscando perfil para:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle(); // Usar maybeSingle para evitar erro caso não exista
+        .maybeSingle();
       
       if (error) {
-        console.error("[Auth] Erro ao buscar perfil:", error.message);
+        console.error("[Auth] Erro na API de perfis:", error.message);
       } else if (data) {
         setProfile(data);
+      } else {
+        console.warn("[Auth] Perfil não encontrado no banco.");
       }
     } catch (err) {
-      console.error("[Auth] Erro inesperado:", err);
+      console.error("[Auth] Erro crítico ao buscar perfil:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
+    // Inicialização
+    const init = async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        setSession(initialSession);
+        setUser(initialSession?.user ?? null);
+        
+        if (initialSession?.user) {
+          await fetchProfile(initialSession.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (e) {
         setLoading(false);
       }
     };
 
-    initAuth();
+    init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Ouvinte de mudanças
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log("[Auth] Evento de autenticação:", event);
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
       
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+      if (currentSession?.user) {
+        await fetchProfile(currentSession.user.id);
       } else {
         setProfile(null);
         setLoading(false);
@@ -75,6 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
+    setLoading(true);
     await supabase.auth.signOut();
   };
 
