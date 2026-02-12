@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,6 +14,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  retryProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,33 +24,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isFetching = useRef(false);
 
-  // Função centralizada para buscar perfil
   const loadProfile = async (userId: string) => {
-    console.log("[Auth] Tentando carregar perfil...");
+    if (isFetching.current) return null;
+    isFetching.current = true;
+    
+    console.log("[Auth] Buscando perfil para ID:", userId);
     try {
-      const { data, error } = await supabase
+      // Usando select normal em vez de maybeSingle para evitar travamentos de query
+      const { data, error, status } = await supabase
         .from('profiles')
         .select('id, role, company_id')
-        .eq('id', userId)
-        .maybeSingle();
+        .eq('id', userId);
       
-      if (error) throw error;
-      return data as Profile;
-    } catch (err) {
-      console.error("[Auth] Erro ao carregar perfil:", err);
+      if (error) {
+        console.error("[Auth] Erro Supabase:", error.message, "Status:", status);
+        return null;
+      }
+
+      if (data && data.length > 0) {
+        console.log("[Auth] Perfil encontrado com sucesso!");
+        return data[0] as Profile;
+      }
+      
+      console.warn("[Auth] Nenhum registro de perfil encontrado para este ID.");
       return null;
+    } catch (err) {
+      console.error("[Auth] Exceção na busca de perfil:", err);
+      return null;
+    } finally {
+      isFetching.current = false;
     }
+  };
+
+  const retryProfile = async () => {
+    if (!user) return;
+    setLoading(true);
+    const p = await loadProfile(user.id);
+    setProfile(p);
+    setLoading(false);
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // Função única de inicialização
     const init = async () => {
-      console.log("[Auth] Iniciando sistema...");
-      
-      // 1. Pega a sessão atual (rápido, vem do localStorage)
+      console.log("[Auth] Inicializando...");
       const { data: { session: initialSession } } = await supabase.auth.getSession();
       
       if (!mounted) return;
@@ -57,55 +78,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (initialSession) {
         setSession(initialSession);
         setUser(initialSession.user);
-        
-        // 2. Busca o perfil apenas se houver sessão
-        const userProfile = await loadProfile(initialSession.user.id);
-        if (mounted) setProfile(userProfile);
+        const p = await loadProfile(initialSession.user.id);
+        if (mounted) setProfile(p);
       }
       
-      if (mounted) {
-        console.log("[Auth] Pronto.");
-        setLoading(false);
-      }
+      if (mounted) setLoading(false);
     };
 
     init();
 
-    // Ouvinte para mudanças de login/logout (apenas para ações do usuário)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("[Auth] Evento Auth:", event);
+      console.log("[Auth] Evento:", event);
       
+      if (!mounted) return;
+
       if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
         setProfile(null);
         setLoading(false);
-        return;
-      }
-
-      if (event === 'SIGNED_IN' && currentSession && !profile) {
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setSession(currentSession);
-        setUser(currentSession.user);
-        const userProfile = await loadProfile(currentSession.user.id);
-        if (mounted) setProfile(userProfile);
-        setLoading(false);
+        setUser(currentSession?.user ?? null);
+        if (currentSession?.user && !profile) {
+          const p = await loadProfile(currentSession.user.id);
+          if (mounted) setProfile(p);
+        }
       }
     });
-
-    // Timeout de segurança: Se em 10s ainda estiver carregando, libera a tela
-    const safetyTimer = setTimeout(() => {
-      if (loading && mounted) {
-        console.warn("[Auth] Tempo limite de carregamento atingido.");
-        setLoading(false);
-      }
-    }, 10000);
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      clearTimeout(safetyTimer);
     };
-  }, [profile, loading]);
+  }, []);
 
   const signOut = async () => {
     setLoading(true);
@@ -114,7 +120,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, signOut, retryProfile }}>
       {children}
     </AuthContext.Provider>
   );
