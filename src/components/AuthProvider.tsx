@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      console.log("[Auth] Buscando perfil para:", userId);
+      console.log("[Auth] Iniciando busca de perfil para:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -34,48 +34,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .maybeSingle();
       
       if (error) {
-        console.error("[Auth] Erro na API de perfis:", error.message);
+        console.error("[Auth] Erro retornado pela API (404 ou outro):", error.message);
       } else if (data) {
+        console.log("[Auth] Perfil carregado com sucesso.");
         setProfile(data);
       } else {
-        console.warn("[Auth] Perfil não encontrado no banco.");
+        console.warn("[Auth] Sessão ativa mas nenhum perfil encontrado na tabela 'profiles'.");
       }
     } catch (err) {
-      console.error("[Auth] Erro crítico ao buscar perfil:", err);
+      console.error("[Auth] Erro inesperado ao buscar perfil:", err);
     } finally {
+      // GARANTE que o loading acaba, não importa o que aconteça
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Inicialização
+    // Inicialização manual do estado
     const init = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-        
-        if (initialSession?.user) {
-          await fetchProfile(initialSession.user.id);
-        } else {
-          setLoading(false);
-        }
-      } catch (e) {
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      
+      if (initialSession?.user) {
+        await fetchProfile(initialSession.user.id);
+      } else {
         setLoading(false);
       }
     };
 
     init();
 
-    // Ouvinte de mudanças
+    // Ouvinte de mudanças (Login/Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("[Auth] Evento de autenticação:", event);
+      console.log("[Auth] Mudança de estado:", event);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
       if (currentSession?.user) {
+        // Se trocou de usuário ou logou, busca o perfil
         await fetchProfile(currentSession.user.id);
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null);
         setLoading(false);
       }
