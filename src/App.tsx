@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -18,32 +18,35 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 'super_admin' | 'company_admin' }) => {
   const { session, profile, loading, signOut } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium">Verificando acesso...</p>
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium animate-pulse">Verificando acesso...</p>
       </div>
     );
   }
 
+  // Se não houver sessão, vai para o login adequado
   if (!session) {
     return <Navigate to={role === 'super_admin' ? "/super-login" : "/login"} replace />;
   }
 
-  if (!profile && session) {
+  // Se houver sessão mas não houver perfil carregado (erro de banco)
+  if (!profile) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
         <div className="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full">
-          <h2 className="text-xl font-bold text-red-600">Acesso Restrito</h2>
-          <p className="text-slate-500 mt-2">Seu perfil (profiles) não foi encontrado na base de dados.</p>
+          <h2 className="text-xl font-bold text-red-600">Erro de Perfil</h2>
+          <p className="text-slate-500 mt-2">Seu usuário existe, mas os dados de permissão não foram encontrados.</p>
           <div className="mt-6 flex flex-col gap-2">
             <Button onClick={() => window.location.reload()} variant="default" className="w-full">
-              Tentar Novamente
+              Recarregar Página
             </Button>
             <Button onClick={() => signOut()} variant="outline" className="w-full">
-              Sair da Conta
+              Sair e Tentar Outro Login
             </Button>
           </div>
         </div>
@@ -51,9 +54,16 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
     );
   }
 
-  if (role && profile?.role !== role) {
-    const destination = profile?.role === 'super_admin' ? "/admin" : "/";
-    return <Navigate to={destination} replace />;
+  // Lógica de redirecionamento por cargo
+  if (role && profile.role !== role) {
+    // Se o super admin tentar entrar na rota de empresa, manda pro /admin
+    if (profile.role === 'super_admin' && location.pathname !== '/admin') {
+      return <Navigate to="/admin" replace />;
+    }
+    // Se o gestor tentar entrar no /admin, manda pra home
+    if (profile.role === 'company_admin' && location.pathname === '/admin') {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;
