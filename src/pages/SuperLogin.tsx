@@ -29,14 +29,44 @@ const SuperLogin = () => {
         
         <Auth
           supabaseClient={supabase}
-          appearance={{ theme: ThemeSupa }}
+          appearance={{ 
+            theme: ThemeSupa,
+            variables: {
+              default: {
+                colors: {
+                  brand: '#dc2626',
+                  brandAccent: '#b91c1c',
+                }
+              }
+            }
+          }}
           providers={[]}
           localization={{
             variables: {
-              sign_in: { email_label: 'E-mail Master', password_label: 'Senha', button_label: 'Entrar no Sistema' }
+              sign_in: {
+                email_label: 'E-mail Master',
+                password_label: 'Senha',
+                button_label: 'Entrar no Sistema',
+                loading_button_label: 'Entrando...',
+                email_input_placeholder: 'Seu e-mail master',
+                password_input_placeholder: 'Sua senha',
+              },
+              forgotten_password: {
+                link_text: 'Esqueceu sua senha?',
+                button_label: 'Enviar instruções de recuperação',
+                loading_button_label: 'Enviando...',
+                email_label: 'E-mail',
+                email_input_placeholder: 'Seu e-mail cadastrado',
+              }
             }
           }}
         />
+        
+        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+          <p className="text-xs text-slate-400 italic">
+            Atendimento exclusivo para administradores de infraestrutura AtendiPRO.
+          </p>
+        </div>
       </div>
     </div>
   );
