@@ -25,29 +25,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    console.log("[Auth] Buscando perfil para UID:", userId);
-    
+    console.time("[Auth] Tempo de resposta perfil");
     try {
-      // Usamos uma consulta simples sem maybeSingle para ser mais direto
       const { data, error } = await supabase
         .from('profiles')
         .select('id, role, company_id')
-        .eq('id', userId);
+        .eq('id', userId)
+        .maybeSingle(); // Mais rápido para busca por ID único
       
       if (error) {
-        console.error("[Auth] Erro na consulta:", error.message);
+        console.error("[Auth] Erro na query de perfil:", error);
         return null;
-      } 
-      
-      if (data && data.length > 0) {
-        console.log("[Auth] Perfil carregado:", data[0].role);
-        return data[0] as Profile;
       }
       
-      console.warn("[Auth] Perfil não encontrado no banco.");
-      return null;
+      console.timeEnd("[Auth] Tempo de resposta perfil");
+      return data as Profile;
     } catch (err) {
-      console.error("[Auth] Erro inesperado:", err);
+      console.error("[Auth] Exceção ao buscar perfil:", err);
       return null;
     }
   };
@@ -56,43 +50,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
 
     const initialize = async () => {
+      console.log("[Auth] Iniciando verificação de sessão...");
       try {
+        // Pega a sessão local (muito rápido)
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         
         if (!mounted) return;
 
-        setSession(initialSession);
-        setUser(initialSession?.user ?? null);
-        
-        if (initialSession?.user) {
+        if (initialSession) {
+          console.log("[Auth] Sessão encontrada, buscando perfil...");
+          setSession(initialSession);
+          setUser(initialSession.user);
           const userProfile = await fetchProfile(initialSession.user.id);
           if (mounted) setProfile(userProfile);
+        } else {
+          console.log("[Auth] Nenhuma sessão ativa encontrada.");
         }
       } catch (err) {
-        console.error("[Auth] Erro na inicialização:", err);
+        console.error("[Auth] Falha crítica na inicialização:", err);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          console.log("[Auth] Inicialização concluída.");
+          setLoading(false);
+        }
       }
     };
 
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("[Auth] Evento:", event);
+      console.log("[Auth] Mudança de estado detectada:", event);
       
       if (!mounted) return;
 
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (event === 'SIGNED_IN' && currentSession?.user) {
-        setLoading(true);
+      if (event === 'SIGNED_IN' && currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user);
         const userProfile = await fetchProfile(currentSession.user.id);
-        if (mounted) {
-          setProfile(userProfile);
-          setLoading(false);
-        }
+        if (mounted) setProfile(userProfile);
       } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
         setProfile(null);
         setLoading(false);
       }
@@ -109,10 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await supabase.auth.signOut();
     } finally {
-      setSession(null);
-      setUser(null);
-      setProfile(null);
-      setLoading(false);
+      window.location.href = '/login';
     }
   };
 
