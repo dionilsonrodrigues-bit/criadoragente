@@ -26,42 +26,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const isFetching = useRef(false);
 
-  const loadProfile = async (userId: string) => {
+  const fetchProfileWithTimeout = async (userId: string): Promise<Profile | null> => {
     if (isFetching.current) return null;
     isFetching.current = true;
     
-    console.log("[Auth] Buscando perfil para ID:", userId);
-    try {
-      // Usando select normal em vez de maybeSingle para evitar travamentos de query
-      const { data, error, status } = await supabase
-        .from('profiles')
-        .select('id, role, company_id')
-        .eq('id', userId);
-      
-      if (error) {
-        console.error("[Auth] Erro Supabase:", error.message, "Status:", status);
+    console.log("[Auth] Iniciando busca de perfil no banco...");
+
+    // Criamos uma promessa de timeout para não travar o app
+    const timeoutPromise = new Promise<null>((resolve) => 
+      setTimeout(() => {
+        console.warn("[Auth] Banco de dados demorou demais. Abortando busca.");
+        resolve(null);
+      }, 5000)
+    );
+
+    const queryPromise = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId);
+
+        if (error) {
+          console.error("[Auth] Erro na tabela profiles:", error.message);
+          return null;
+        }
+
+        if (data && data.length > 0) {
+          console.log("[Auth] Perfil carregado:", data[0].role);
+          return data[0] as Profile;
+        }
+
+        console.warn("[Auth] Registro de perfil não encontrado no banco.");
+        return null;
+      } catch (err) {
+        console.error("[Auth] Falha na conexão com banco:", err);
         return null;
       }
+    })();
 
-      if (data && data.length > 0) {
-        console.log("[Auth] Perfil encontrado com sucesso!");
-        return data[0] as Profile;
-      }
-      
-      console.warn("[Auth] Nenhum registro de perfil encontrado para este ID.");
-      return null;
-    } catch (err) {
-      console.error("[Auth] Exceção na busca de perfil:", err);
-      return null;
-    } finally {
-      isFetching.current = false;
-    }
+    const result = await Promise.race([queryPromise, timeoutPromise]);
+    isFetching.current = false;
+    return result;
   };
 
   const retryProfile = async () => {
     if (!user) return;
     setLoading(true);
-    const p = await loadProfile(user.id);
+    const p = await fetchProfileWithTimeout(user.id);
     setProfile(p);
     setLoading(false);
   };
@@ -69,27 +81,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    const init = async () => {
-      console.log("[Auth] Inicializando...");
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
+    const startApp = async () => {
+      console.log("[Auth] Verificando sessão local...");
+      const { data: { session: activeSession } } = await supabase.auth.getSession();
       
       if (!mounted) return;
 
-      if (initialSession) {
-        setSession(initialSession);
-        setUser(initialSession.user);
-        const p = await loadProfile(initialSession.user.id);
+      if (activeSession) {
+        console.log("[Auth] Usuário logado detectado.");
+        setSession(activeSession);
+        setUser(activeSession.user);
+        const p = await fetchProfileWithTimeout(activeSession.user.id);
         if (mounted) setProfile(p);
+      } else {
+        console.log("[Auth] Nenhum usuário logado.");
       }
       
       if (mounted) setLoading(false);
     };
 
-    init();
+    startApp();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("[Auth] Evento:", event);
-      
+      console.log("[Auth] Mudança de estado:", event);
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT') {
@@ -98,12 +112,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(null);
         setLoading(false);
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        if (currentSession?.user && !profile) {
-          const p = await loadProfile(currentSession.user.id);
-          if (mounted) setProfile(p);
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          // Só busca se ainda não tiver profile
+          if (!profile) {
+            const p = await fetchProfileWithTimeout(currentSession.user.id);
+            if (mounted) setProfile(p);
+          }
         }
+        setLoading(false);
       }
     });
 
