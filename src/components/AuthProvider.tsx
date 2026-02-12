@@ -25,37 +25,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    console.log("[Auth] Iniciando busca de perfil para:", userId);
+    console.log("[Auth] Buscando perfil para UID:", userId);
     
-    // Timeout de segurança: se a API não responder em 5 segundos, libera a tela
-    const timeout = setTimeout(() => {
-      if (loading) {
-        console.warn("[Auth] Busca de perfil demorou demais, liberando carregamento.");
-        setLoading(false);
-      }
-    }, 5000);
-
     try {
+      // Usamos uma consulta simples sem maybeSingle para ser mais direto
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+        .select('id, role, company_id')
+        .eq('id', userId);
       
       if (error) {
-        console.error("[Auth] Erro ao buscar perfil:", error.message);
-      } else if (data) {
-        console.log("[Auth] Perfil encontrado com sucesso:", data.role);
-        setProfile(data);
-      } else {
-        console.warn("[Auth] Nenhum registro encontrado na tabela profiles.");
+        console.error("[Auth] Erro na consulta:", error.message);
+        return null;
+      } 
+      
+      if (data && data.length > 0) {
+        console.log("[Auth] Perfil carregado:", data[0].role);
+        return data[0] as Profile;
       }
+      
+      console.warn("[Auth] Perfil não encontrado no banco.");
+      return null;
     } catch (err) {
-      console.error("[Auth] Erro inesperado na busca de perfil:", err);
-    } finally {
-      clearTimeout(timeout);
-      setLoading(false);
-      console.log("[Auth] Busca finalizada.");
+      console.error("[Auth] Erro inesperado:", err);
+      return null;
     }
   };
 
@@ -65,19 +58,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initialize = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
         if (!mounted) return;
 
-        console.log("[Auth] Sessão inicial detectada:", initialSession ? "Sim" : "Não");
         setSession(initialSession);
         setUser(initialSession?.user ?? null);
         
         if (initialSession?.user) {
-          await fetchProfile(initialSession.user.id);
-        } else {
-          setLoading(false);
+          const userProfile = await fetchProfile(initialSession.user.id);
+          if (mounted) setProfile(userProfile);
         }
       } catch (err) {
-        console.error("[Auth] Falha na inicialização:", err);
+        console.error("[Auth] Erro na inicialização:", err);
+      } finally {
         if (mounted) setLoading(false);
       }
     };
@@ -85,14 +78,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initialize();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("[Auth] Evento detectado:", event);
+      console.log("[Auth] Evento:", event);
+      
       if (!mounted) return;
 
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
       if (event === 'SIGNED_IN' && currentSession?.user) {
-        await fetchProfile(currentSession.user.id);
+        setLoading(true);
+        const userProfile = await fetchProfile(currentSession.user.id);
+        if (mounted) {
+          setProfile(userProfile);
+          setLoading(false);
+        }
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
         setLoading(false);
