@@ -74,7 +74,6 @@ const AgentWizard = () => {
   const [departments, setDepartments] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState<string | null>(null);
 
-  // States para controlar inputs personalizados
   const [isCustomObjective, setIsCustomObjective] = useState(false);
   const [isCustomType, setIsCustomType] = useState(false);
   const [isCustomTone, setIsCustomTone] = useState(false);
@@ -128,6 +127,7 @@ const AgentWizard = () => {
       toast.error('Erro ao carregar dados do agente');
       navigate('/');
     } else {
+      // Mapeamento correto de snake_case para camelCase
       setFormData({
         name: data.name,
         objective: data.objective || '',
@@ -136,12 +136,11 @@ const AgentWizard = () => {
         responseSize: data.response_size || 'médias',
         allowEmoji: data.allow_emoji ?? true,
         basePrompt: data.base_prompt || DEFAULT_BRAIN_TEMPLATE,
-        business_context: data.business_context || '',
-        transfer_rule: data.transfer_rule || DEFAULT_TRANSFER_TEMPLATE,
-        transfer_dept_id: data.transfer_dept_id || '',
-      } as any);
+        businessContext: data.business_context || '',
+        transferRule: data.transfer_rule || DEFAULT_TRANSFER_TEMPLATE,
+        transferDept: data.transfer_dept_id || '',
+      });
 
-      // Checar se os valores são personalizados (não estão na lista padrão)
       const defaultObjectives = ['vender', 'qualificar', 'suporte', 'triagem'];
       const defaultTypes = ['sdr', 'suporte', 'recepcionista', 'pos-venda'];
       const defaultTones = ['profissional', 'amigável', 'direto', 'persuasivo'];
