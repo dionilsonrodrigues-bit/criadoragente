@@ -14,7 +14,8 @@ import {
   Copy,
   Loader2,
   Edit3,
-  List
+  List,
+  X
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -246,7 +247,7 @@ const AgentWizard = () => {
                 </div>
                 {isCustomObjective ? (
                   <Input 
-                    placeholder="Digite o objetivo personalizado..."
+                    placeholder="Digite o objective personalizado..."
                     value={formData.objective}
                     onChange={(e) => setFormData({...formData, objective: e.target.value})}
                   />
@@ -527,15 +528,26 @@ const AgentWizard = () => {
           </div>
 
           <div className="flex justify-between items-center mt-12 py-6 border-t border-slate-100">
-            <Button 
-              variant="ghost" 
-              onClick={prevStep} 
-              disabled={currentStep === 1 || isLoading}
-              className="gap-2 text-gray-500 hover:text-slate-900"
-            >
-              <ChevronLeft size={18} />
-              Voltar
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                onClick={prevStep} 
+                disabled={currentStep === 1 || isLoading}
+                className="gap-2 text-gray-500 hover:text-slate-900"
+              >
+                <ChevronLeft size={18} />
+                Voltar
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/')}
+                disabled={isLoading}
+                className="gap-2 text-gray-400 border-gray-200 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all"
+              >
+                <X size={16} />
+                Cancelar
+              </Button>
+            </div>
 
             {currentStep === steps.length ? (
               <Button 
