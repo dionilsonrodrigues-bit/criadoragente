@@ -24,24 +24,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
-    console.time("[Auth] Tempo de resposta perfil");
+  // Função centralizada para buscar perfil
+  const loadProfile = async (userId: string) => {
+    console.log("[Auth] Tentando carregar perfil...");
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, role, company_id')
         .eq('id', userId)
-        .maybeSingle(); // Mais rápido para busca por ID único
+        .maybeSingle();
       
-      if (error) {
-        console.error("[Auth] Erro na query de perfil:", error);
-        return null;
-      }
-      
-      console.timeEnd("[Auth] Tempo de resposta perfil");
+      if (error) throw error;
       return data as Profile;
     } catch (err) {
-      console.error("[Auth] Exceção ao buscar perfil:", err);
+      console.error("[Auth] Erro ao carregar perfil:", err);
       return null;
     }
   };
@@ -49,66 +45,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    const initialize = async () => {
-      console.log("[Auth] Iniciando verificação de sessão...");
-      try {
-        // Pega a sessão local (muito rápido)
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-
-        if (initialSession) {
-          console.log("[Auth] Sessão encontrada, buscando perfil...");
-          setSession(initialSession);
-          setUser(initialSession.user);
-          const userProfile = await fetchProfile(initialSession.user.id);
-          if (mounted) setProfile(userProfile);
-        } else {
-          console.log("[Auth] Nenhuma sessão ativa encontrada.");
-        }
-      } catch (err) {
-        console.error("[Auth] Falha crítica na inicialização:", err);
-      } finally {
-        if (mounted) {
-          console.log("[Auth] Inicialização concluída.");
-          setLoading(false);
-        }
-      }
-    };
-
-    initialize();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("[Auth] Mudança de estado detectada:", event);
+    // Função única de inicialização
+    const init = async () => {
+      console.log("[Auth] Iniciando sistema...");
+      
+      // 1. Pega a sessão atual (rápido, vem do localStorage)
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
       
       if (!mounted) return;
 
-      if (event === 'SIGNED_IN' && currentSession) {
-        setSession(currentSession);
-        setUser(currentSession.user);
-        const userProfile = await fetchProfile(currentSession.user.id);
+      if (initialSession) {
+        setSession(initialSession);
+        setUser(initialSession.user);
+        
+        // 2. Busca o perfil apenas se houver sessão
+        const userProfile = await loadProfile(initialSession.user.id);
         if (mounted) setProfile(userProfile);
-      } else if (event === 'SIGNED_OUT') {
+      }
+      
+      if (mounted) {
+        console.log("[Auth] Pronto.");
+        setLoading(false);
+      }
+    };
+
+    init();
+
+    // Ouvinte para mudanças de login/logout (apenas para ações do usuário)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log("[Auth] Evento Auth:", event);
+      
+      if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
         setProfile(null);
         setLoading(false);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' && currentSession && !profile) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+        const userProfile = await loadProfile(currentSession.user.id);
+        if (mounted) setProfile(userProfile);
+        setLoading(false);
       }
     });
+
+    // Timeout de segurança: Se em 10s ainda estiver carregando, libera a tela
+    const safetyTimer = setTimeout(() => {
+      if (loading && mounted) {
+        console.warn("[Auth] Tempo limite de carregamento atingido.");
+        setLoading(false);
+      }
+    }, 10000);
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearTimeout(safetyTimer);
     };
-  }, []);
+  }, [profile, loading]);
 
   const signOut = async () => {
     setLoading(true);
-    try {
-      await supabase.auth.signOut();
-    } finally {
-      window.location.href = '/login';
-    }
+    await supabase.auth.signOut();
+    window.location.href = '/login';
   };
 
   return (
