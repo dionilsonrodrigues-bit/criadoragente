@@ -12,11 +12,12 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Login from "./pages/Login";
 import SuperLogin from "./pages/SuperLogin";
 import Layout from "./components/Layout";
+import { Button } from "./components/ui/button";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 'super_admin' | 'company_admin' }) => {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -31,28 +32,27 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
     return <Navigate to={role === 'super_admin' ? "/super-login" : "/login"} replace />;
   }
 
-  // Se o perfil falhou ao carregar (o erro 404 que vimos), mas o usuário está logado
   if (!profile && session) {
-    // Se estivermos tentando acessar uma rota protegida por role, mas não temos perfil,
-    // mostramos uma mensagem de erro amigável em vez de entrar em loop.
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
-        <h2 className="text-xl font-bold text-red-600">Erro de Perfil</h2>
-        <p className="text-slate-500 mt-2">Seu perfil de acesso não foi encontrado ou está sendo configurado.</p>
-        <p className="text-xs text-slate-400 mt-1">Verifique a tabela 'profiles' no seu banco de dados.</p>
-        <button 
-          onClick={() => window.location.reload()} 
-          className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Tentar Novamente
-        </button>
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full">
+          <h2 className="text-xl font-bold text-red-600">Acesso Restrito</h2>
+          <p className="text-slate-500 mt-2">Seu perfil (profiles) não foi encontrado na base de dados.</p>
+          <div className="mt-6 flex flex-col gap-2">
+            <Button onClick={() => window.location.reload()} variant="default" className="w-full">
+              Tentar Novamente
+            </Button>
+            <Button onClick={() => signOut()} variant="outline" className="w-full">
+              Sair da Conta
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (role && profile?.role !== role) {
     const destination = profile?.role === 'super_admin' ? "/admin" : "/";
-    if (window.location.pathname === destination) return <>{children}</>;
     return <Navigate to={destination} replace />;
   }
 
