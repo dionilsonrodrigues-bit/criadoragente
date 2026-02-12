@@ -27,21 +27,32 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
     );
   }
 
-  // Se não estiver logado, vai para a página de login correspondente
   if (!session) {
     return <Navigate to={role === 'super_admin' ? "/super-login" : "/login"} replace />;
   }
 
-  // Se o perfil não foi carregado ou a role não bate
+  // Se o perfil falhou ao carregar (o erro 404 que vimos), mas o usuário está logado
+  if (!profile && session) {
+    // Se estivermos tentando acessar uma rota protegida por role, mas não temos perfil,
+    // mostramos uma mensagem de erro amigável em vez de entrar em loop.
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
+        <h2 className="text-xl font-bold text-red-600">Erro de Perfil</h2>
+        <p className="text-slate-500 mt-2">Seu perfil de acesso não foi encontrado ou está sendo configurado.</p>
+        <p className="text-xs text-slate-400 mt-1">Verifique a tabela 'profiles' no seu banco de dados.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Tentar Novamente
+        </button>
+      </div>
+    );
+  }
+
   if (role && profile?.role !== role) {
-    // Se for um super_admin tentando entrar em rota de empresa, ou vice-versa
     const destination = profile?.role === 'super_admin' ? "/admin" : "/";
-    
-    // Evita redirecionar para a mesma página
-    if (window.location.pathname === destination) {
-       return <>{children}</>;
-    }
-    
+    if (window.location.pathname === destination) return <>{children}</>;
     return <Navigate to={destination} replace />;
   }
 
