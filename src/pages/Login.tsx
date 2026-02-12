@@ -47,11 +47,20 @@ const Login = () => {
                 email_label: 'E-mail',
                 password_label: 'Senha',
                 button_label: 'Entrar',
+                loading_button_label: 'Entrando...',
+                link_text: 'Não tem uma conta? Cadastre-se',
               },
               sign_up: {
                 email_label: 'E-mail',
                 password_label: 'Senha',
                 button_label: 'Cadastrar',
+                loading_button_label: 'Cadastrando...',
+                link_text: 'Já tem uma conta? Entre aqui',
+              },
+              forgotten_password: {
+                link_text: 'Esqueceu sua senha?',
+                button_label: 'Recuperar Senha',
+                email_label: 'E-mail',
               }
             }
           }}

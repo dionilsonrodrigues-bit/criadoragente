@@ -50,6 +50,14 @@ const SuperLogin = () => {
                 loading_button_label: 'Entrando...',
                 email_input_placeholder: 'Seu e-mail master',
                 password_input_placeholder: 'Sua senha',
+                link_text: 'Não tem uma conta? Cadastre-se',
+              },
+              sign_up: {
+                email_label: 'E-mail',
+                password_label: 'Crie uma Senha',
+                button_label: 'Criar Conta Master',
+                loading_button_label: 'Criando...',
+                link_text: 'Já tem uma conta? Entre aqui',
               },
               forgotten_password: {
                 link_text: 'Esqueceu sua senha?',
