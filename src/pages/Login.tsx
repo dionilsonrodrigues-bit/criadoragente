@@ -61,6 +61,12 @@ const Login = () => {
                 link_text: 'Esqueceu sua senha?',
                 button_label: 'Recuperar Senha',
                 email_label: 'E-mail',
+              },
+              api_errors: {
+                invalid_credentials: 'E-mail ou senha inválidos.',
+                email_not_confirmed: 'E-mail ainda não confirmado.',
+                user_not_found: 'Usuário não encontrado.',
+                invalid_grant_error: 'Credenciais inválidas.',
               }
             }
           }}

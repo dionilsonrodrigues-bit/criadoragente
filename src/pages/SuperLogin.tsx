@@ -65,6 +65,13 @@ const SuperLogin = () => {
                 loading_button_label: 'Enviando...',
                 email_label: 'E-mail',
                 email_input_placeholder: 'Seu e-mail cadastrado',
+              },
+              // Traduções de erro globais
+              api_errors: {
+                invalid_credentials: 'E-mail ou senha inválidos.',
+                email_not_confirmed: 'E-mail ainda não confirmado.',
+                user_not_found: 'Usuário não encontrado.',
+                invalid_grant_error: 'Credenciais inválidas.',
               }
             }
           }}
