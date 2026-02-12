@@ -22,7 +22,7 @@ const Layout = () => {
     { icon: ShieldCheck, label: 'Painel Master', path: '/admin' },
   ] : [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: Bot, label: 'Meus Agentes', path: '/agents/new' },
+    { icon: Bot, label: 'Meus Agentes', path: '/agents' },
     { icon: Users, label: 'Departamentos', path: '/departments' },
   ];
 

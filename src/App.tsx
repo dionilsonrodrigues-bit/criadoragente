@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "./components/AuthProvider";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AgentWizard from "./pages/AgentWizard";
+import AgentsList from "./pages/AgentsList";
 import Departments from "./pages/Departments";
 import AdminDashboard from "./pages/AdminDashboard";
 import Login from "./pages/Login";
@@ -81,6 +82,7 @@ const App = () => (
               </ProtectedRoute>
             }>
               <Route path="/" element={<Index />} />
+              <Route path="/agents" element={<AgentsList />} />
               <Route path="/agents/new" element={<AgentWizard />} />
               <Route path="/agents/edit/:id" element={<AgentWizard />} />
               <Route path="/departments" element={<Departments />} />
