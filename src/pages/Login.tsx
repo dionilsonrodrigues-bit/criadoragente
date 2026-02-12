@@ -62,9 +62,10 @@ const Login = () => {
                 button_label: 'Recuperar Senha',
                 email_label: 'E-mail',
               },
+              // Traduções de erro da API
               api_errors: {
-                invalid_credentials: 'E-mail ou senha inválidos.',
-                email_not_confirmed: 'E-mail ainda não confirmado.',
+                invalid_credentials: 'E-mail ou senha incorretos. Verifique os dados e tente novamente.',
+                email_not_confirmed: 'E-mail ainda não confirmado. Verifique sua caixa de entrada.',
                 user_not_found: 'Usuário não encontrado.',
                 invalid_grant_error: 'Credenciais inválidas.',
               }

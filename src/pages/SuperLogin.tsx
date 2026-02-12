@@ -52,26 +52,12 @@ const SuperLogin = () => {
                 password_input_placeholder: 'Sua senha',
                 link_text: 'Não tem uma conta? Cadastre-se',
               },
-              sign_up: {
-                email_label: 'E-mail',
-                password_label: 'Crie uma Senha',
-                button_label: 'Criar Conta Master',
-                loading_button_label: 'Criando...',
-                link_text: 'Já tem uma conta? Entre aqui',
-              },
-              forgotten_password: {
-                link_text: 'Esqueceu sua senha?',
-                button_label: 'Enviar instruções de recuperação',
-                loading_button_label: 'Enviando...',
-                email_label: 'E-mail',
-                email_input_placeholder: 'Seu e-mail cadastrado',
-              },
-              // Traduções de erro globais
+              // Traduções de erro da API
               api_errors: {
-                invalid_credentials: 'E-mail ou senha inválidos.',
-                email_not_confirmed: 'E-mail ainda não confirmado.',
-                user_not_found: 'Usuário não encontrado.',
-                invalid_grant_error: 'Credenciais inválidas.',
+                invalid_credentials: 'E-mail ou senha incorretos para o acesso Master.',
+                email_not_confirmed: 'E-mail master não confirmado.',
+                user_not_found: 'Usuário master não encontrado.',
+                invalid_grant_error: 'Credenciais master inválidas.',
               }
             }
           }}
