@@ -19,15 +19,30 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
   const { session, profile, loading } = useAuth();
 
   if (loading) {
-    return <div className="h-screen w-screen flex items-center justify-center text-slate-500">Autenticando...</div>;
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium">Verificando acesso...</p>
+      </div>
+    );
   }
 
+  // Se não estiver logado, vai para a página de login correspondente
   if (!session) {
     return <Navigate to={role === 'super_admin' ? "/super-login" : "/login"} replace />;
   }
 
+  // Se o perfil não foi carregado ou a role não bate
   if (role && profile?.role !== role) {
-    return <Navigate to={profile?.role === 'super_admin' ? "/admin" : "/"} replace />;
+    // Se for um super_admin tentando entrar em rota de empresa, ou vice-versa
+    const destination = profile?.role === 'super_admin' ? "/admin" : "/";
+    
+    // Evita redirecionar para a mesma página
+    if (window.location.pathname === destination) {
+       return <>{children}</>;
+    }
+    
+    return <Navigate to={destination} replace />;
   }
 
   return <>{children}</>;
@@ -41,11 +56,9 @@ const App = () => (
         <Sonner position="top-right" />
         <BrowserRouter>
           <Routes>
-            {/* Logins Separados */}
             <Route path="/login" element={<Login />} />
             <Route path="/super-login" element={<SuperLogin />} />
 
-            {/* Rotas de Admin de Empresa */}
             <Route element={
               <ProtectedRoute role="company_admin">
                 <Layout />
@@ -57,7 +70,6 @@ const App = () => (
               <Route path="/departments" element={<Departments />} />
             </Route>
 
-            {/* Rotas de Super Admin */}
             <Route element={
               <ProtectedRoute role="super_admin">
                 <Layout />
