@@ -1,20 +1,44 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from 'sonner';
 
 const SuperLogin = () => {
   const { session, profile } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     if (session && profile?.role === 'super_admin') {
       navigate('/admin');
     }
   }, [session, profile, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      toast.error('Credenciais master inválidas.');
+    } else {
+      // O redirecionamento será tratado pelo useEffect acima após o perfil carregar
+      toast.success('Acesso master autorizado!');
+    }
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
@@ -24,44 +48,46 @@ const SuperLogin = () => {
             <ShieldCheck className="text-white w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Portal Super Admin</h1>
-          <p className="text-slate-500 text-sm">Acesso restrito à gestão de empresas</p>
+          <p className="text-slate-500 text-sm">Acesso restrito à gestão de infraestrutura</p>
         </div>
         
-        <Auth
-          supabaseClient={supabase}
-          appearance={{ 
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: '#dc2626',
-                  brandAccent: '#b91c1c',
-                }
-              }
-            }
-          }}
-          providers={[]}
-          localization={{
-            variables: {
-              sign_in: {
-                email_label: 'E-mail Master',
-                password_label: 'Senha',
-                button_label: 'Entrar no Sistema',
-                loading_button_label: 'Entrando...',
-                email_input_placeholder: 'Seu e-mail master',
-                password_input_placeholder: 'Sua senha',
-                link_text: 'Não tem uma conta? Cadastre-se',
-              },
-              // Traduções de erro da API
-              api_errors: {
-                invalid_credentials: 'E-mail ou senha incorretos para o acesso Master.',
-                email_not_confirmed: 'E-mail master não confirmado.',
-                user_not_found: 'Usuário master não encontrado.',
-                invalid_grant_error: 'Credenciais master inválidas.',
-              }
-            }
-          }}
-        />
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">E-mail Master</Label>
+            <Input 
+              id="email" 
+              type="email" 
+              placeholder="admin@master.com" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Senha Master</Label>
+            <div className="relative">
+              <Input 
+                id="password" 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+          <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={loading}>
+            {loading ? <Loader2 className="animate-spin mr-2" size={18} /> : null}
+            Entrar no Sistema Master
+          </Button>
+        </form>
         
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
           <p className="text-xs text-slate-400 italic">
