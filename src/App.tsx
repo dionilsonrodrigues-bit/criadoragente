@@ -10,6 +10,7 @@ import AgentWizard from "./pages/AgentWizard";
 import AgentsList from "./pages/AgentsList";
 import Departments from "./pages/Departments";
 import AdminDashboard from "./pages/AdminDashboard";
+import Plans from "./pages/Plans";
 import Login from "./pages/Login";
 import SuperLogin from "./pages/SuperLogin";
 import Layout from "./components/Layout";
@@ -54,10 +55,10 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
   }
 
   if (role && profile.role !== role) {
-    if (profile.role === 'super_admin' && location.pathname !== '/admin') {
+    if (profile.role === 'super_admin' && location.pathname !== '/admin' && !location.pathname.startsWith('/admin/')) {
       return <Navigate to="/admin" replace />;
     }
-    if (profile.role === 'company_admin' && location.pathname === '/admin') {
+    if (profile.role === 'company_admin' && location.pathname.startsWith('/admin')) {
       return <Navigate to="/" replace />;
     }
   }
@@ -94,6 +95,7 @@ const App = () => (
               </ProtectedRoute>
             }>
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/plans" element={<Plans />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

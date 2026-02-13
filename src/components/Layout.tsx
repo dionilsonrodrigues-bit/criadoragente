@@ -6,7 +6,8 @@ import {
   ShieldCheck, 
   LogOut,
   Users,
-  Building2
+  Building2,
+  Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
@@ -20,6 +21,7 @@ const Layout = () => {
 
   const menuItems = isSuper ? [
     { icon: ShieldCheck, label: 'Painel Master', path: '/admin' },
+    { icon: Package, label: 'Planos', path: '/admin/plans' },
   ] : [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Bot, label: 'Meus Agentes', path: '/agents' },
