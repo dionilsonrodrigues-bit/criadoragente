@@ -105,8 +105,8 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Ajustado: Enviando o token direto no Authorization
-          'Authorization': API_TOKEN 
+          // Ajustado: A maioria das integrações AtendiPRO usa o header 'apitoken'
+          'apitoken': API_TOKEN 
         },
         body: JSON.stringify(externalPayload)
       });
