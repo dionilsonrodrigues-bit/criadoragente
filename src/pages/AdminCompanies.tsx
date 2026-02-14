@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Building2, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, AlertCircle, Calendar, CreditCard } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ const AdminCompanies = () => {
           .from('companies')
           .select(`
             *, 
+            plans(name),
             agents(id, status), 
             profiles:profiles!company_id(id, email, role)
           `)
@@ -204,12 +205,12 @@ const AdminCompanies = () => {
                   <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-400 uppercase">
                     {company.name.charAt(0)}
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-slate-800">{company.name}</h4>
                       <Badge variant="outline" className="text-[10px] bg-slate-50">ID: {company.atendi_id}</Badge>
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                       <span className="flex items-center gap-1">
                         <Mail size={12}/> 
                         {company.profiles?.find((p:any)=>p.role==='company_admin')?.email || (
@@ -217,6 +218,16 @@ const AdminCompanies = () => {
                         )}
                       </span>
                       {company.phone && <span className="flex items-center gap-1"><Phone size={12}/> {company.phone}</span>}
+                      
+                      {/* Novas informações de Plano e Vencimento */}
+                      <span className="flex items-center gap-1 text-blue-600 font-medium">
+                        <CreditCard size={12}/>
+                        {company.plans?.name || 'Sem Plano'}
+                      </span>
+                      <span className="flex items-center gap-1 text-amber-600 font-medium">
+                        <Calendar size={12}/>
+                        Venc: Dia {company.due_day || '--'}
+                      </span>
                     </div>
                   </div>
                 </div>
