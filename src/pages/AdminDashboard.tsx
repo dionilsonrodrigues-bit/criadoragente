@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Globe, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Building2, Globe, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, CheckCircle2, AlertCircle, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { 
   Select, 
@@ -40,7 +39,6 @@ const AdminDashboard = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [adminUser, setAdminUser] = useState<any>(null);
-  const [createAdmin, setCreateAdmin] = useState(true);
   const [phoneValue, setPhoneValue] = useState('');
   
   const [stats, setStats] = useState({
@@ -69,7 +67,7 @@ const AdminDashboard = () => {
       ]);
 
       if (companiesRes.error) {
-        toast.error('Erro ao buscar empresas. Verifique as políticas de RLS.');
+        toast.error('Erro ao buscar empresas.');
       } else {
         setCompanies(companiesRes.data || []);
         const totalAgents = companiesRes.data?.reduce((acc, comp) => acc + (comp.agents?.length || 0), 0) || 0;
@@ -129,21 +127,15 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Empresa e Gestor atualizados!');
       } else {
-        if (createAdmin) {
-          const { error } = await supabase.functions.invoke('create-company-user', {
-            body: { 
-              ...companyData, 
-              email: formData.get('adminEmail') as string,
-              password: formData.get('adminPassword') as string
-            }
-          });
-          if (error) throw error;
-          toast.success('Empresa e Usuário criados!');
-        } else {
-          const { error } = await supabase.from('companies').insert([companyData]);
-          if (error) throw error;
-          toast.success('Empresa cadastrada!');
-        }
+        const { error } = await supabase.functions.invoke('create-company-user', {
+          body: { 
+            ...companyData, 
+            email: formData.get('adminEmail') as string,
+            password: formData.get('adminPassword') as string
+          }
+        });
+        if (error) throw error;
+        toast.success('Empresa e Usuário criados!');
       }
       setIsDialogOpen(false);
       fetchData();
@@ -157,7 +149,6 @@ const AdminDashboard = () => {
   const openNewDialog = () => {
     setEditingCompany(null);
     setAdminUser(null);
-    setCreateAdmin(true);
     setPhoneValue('');
     setIsDialogOpen(true);
   };
@@ -166,7 +157,6 @@ const AdminDashboard = () => {
     setEditingCompany(company);
     const admin = company.profiles?.find((p: any) => p.role === 'company_admin');
     setAdminUser(admin || null);
-    setCreateAdmin(false);
     setPhoneValue(company.phone || '');
     setIsDialogOpen(true);
   };
@@ -240,16 +230,20 @@ const AdminDashboard = () => {
                       <span className="flex items-center gap-1">
                         <Mail size={12}/> 
                         {company.profiles?.find((p:any)=>p.role==='company_admin')?.email || (
-                          <span className="text-red-400 flex items-center gap-1"><AlertCircle size={10}/> Gestor não carregado</span>
+                          <span className="text-red-400 flex items-center gap-1"><AlertCircle size={10}/> Gestor sem perfil</span>
                         )}
                       </span>
+                      {company.phone && <span className="flex items-center gap-1"><Phone size={12}/> {company.phone}</span>}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                   <Badge variant={company.status === 'active' ? 'default' : 'secondary'} className={company.status === 'active' ? 'bg-green-600' : ''}>
+                     {company.status === 'active' ? 'Ativo' : 'Inativo'}
+                   </Badge>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">Ações <MoreVertical size={14} /></Button>
+                      <Button variant="ghost" size="icon"><MoreVertical size={16} /></Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openEditDialog(company)}>
@@ -265,61 +259,110 @@ const AdminDashboard = () => {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleSaveCompany}>
             <DialogHeader>
               <DialogTitle>{editingCompany ? 'Editar Empresa e Gestor' : 'Cadastrar Nova Empresa'}</DialogTitle>
               <DialogDescription>
-                {editingCompany ? `Atualizando dados da empresa ${editingCompany.name}` : 'Crie uma instância e configure os dados contratuais.'}
+                Configure os dados da instância e as informações de acesso do administrador.
               </DialogDescription>
             </DialogHeader>
+            
             <div className="py-6 space-y-6">
+              {/* Informações Básicas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nome da Empresa</Label>
                   <Input name="companyName" defaultValue={editingCompany?.name} placeholder="Ex: Acme Corp" required />
                 </div>
                 <div className="space-y-2">
-                  <Label>ID AtendiPRO</Label>
+                  <Label>ID AtendiPRO (Instância)</Label>
                   <Input name="atendiId" defaultValue={editingCompany?.atendi_id} placeholder="Ex: 550" required />
                 </div>
               </div>
 
-              <div className="relative">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Telefone de Contato</Label>
+                  <Input value={phoneValue} onChange={handlePhoneChange} placeholder="(00) 00000-0000" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Plano de Assinatura</Label>
+                  <Select name="planId" defaultValue={editingCompany?.plan_id}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um plano" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plans.map(plan => (
+                        <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Descrição / Notas Internas</Label>
+                <Textarea name="description" defaultValue={editingCompany?.description} placeholder="Notas sobre a empresa..." rows={2} />
+              </div>
+
+              {/* Dados Financeiros/Status */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-lg">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select name="status" defaultValue={editingCompany?.status || 'active'}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                      <SelectItem value="suspended">Suspenso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Dia de Vencimento</Label>
+                  <Input name="dueDay" type="number" min="1" max="31" defaultValue={editingCompany?.due_day || 10} className="bg-white" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Recorrência</Label>
+                  <Select name="recurrence" defaultValue={editingCompany?.recurrence || 'monthly'}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                      <SelectItem value="quarterly">Trimestral</SelectItem>
+                      <SelectItem value="yearly">Anual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Dados de Acesso */}
+              <div className="relative pt-4">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-white px-2 text-slate-500 font-bold">Dados de Acesso (Gestor)</span>
                 </div>
               </div>
 
-              {(createAdmin || editingCompany) && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="flex items-center gap-2"><Mail size={14}/> E-mail do Gestor</Label>
-                        {editingCompany && adminUser && (
-                          <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200 gap-1">
-                            <CheckCircle2 size={10} /> Usuário Cadastrado
-                          </Badge>
-                        )}
-                      </div>
-                      <Input name="adminEmail" type="email" defaultValue={adminUser?.email} placeholder="gestor@empresa.com" required />
-                      {editingCompany && !adminUser && (
-                        <p className="text-[10px] text-red-500">Aviso: Perfil do gestor não encontrado ou sem acesso.</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2"><Lock size={14}/> {editingCompany ? 'Nova Senha (Opcional)' : 'Senha Temporária'}</Label>
-                      <Input name="adminPassword" type="password" placeholder={editingCompany ? "Manter atual" : "••••••••"} required={!editingCompany} />
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Mail size={14}/> E-mail do Gestor</Label>
+                  <Input name="adminEmail" type="email" defaultValue={adminUser?.email} placeholder="gestor@empresa.com" required />
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Lock size={14}/> {editingCompany ? 'Nova Senha (Opcional)' : 'Senha de Acesso'}</Label>
+                  <Input name="adminPassword" type="password" placeholder={editingCompany ? "Manter atual" : "••••••••"} required={!editingCompany} />
+                </div>
+              </div>
             </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancelar</Button>
-              <Button type="submit" disabled={isSubmitting} className="gap-2">
+              <Button type="submit" disabled={isSubmitting} className="gap-2 bg-slate-900">
                 {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : (editingCompany ? <Save size={18} /> : <UserPlus size={18} />)}
                 {editingCompany ? 'Salvar Alterações' : 'Cadastrar Empresa'}
               </Button>
