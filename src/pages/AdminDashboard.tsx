@@ -146,6 +146,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteCompany = async (id: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja excluir a empresa "${name}"? Esta ação não pode ser desfeita.`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      toast.success('Empresa excluída com sucesso!');
+      fetchData();
+    } catch (err: any) {
+      toast.error(`Erro ao excluir: ${err.message}`);
+    }
+  };
+
   const openNewDialog = () => {
     setEditingCompany(null);
     setAdminUser(null);
@@ -248,6 +266,12 @@ const AdminDashboard = () => {
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openEditDialog(company)}>
                         <Edit2 size={14} className="mr-2" /> Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50" 
+                        onClick={() => handleDeleteCompany(company.id, company.name)}
+                      >
+                        <Trash2 size={14} className="mr-2" /> Excluir
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
