@@ -105,7 +105,8 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_TOKEN}`
+          // Ajustado: Enviando o token direto no Authorization
+          'Authorization': API_TOKEN 
         },
         body: JSON.stringify(externalPayload)
       });
