@@ -24,7 +24,7 @@ serve(async (req) => {
     
     console.log(`[create-company-user] Iniciando cadastro: ${name} / ${email}`);
 
-    // 1. Criar a Empresa
+    // 1. Criar a Empresa no Banco Local
     const { data: company, error: companyError } = await supabaseClient
       .from('companies')
       .insert([{ 
@@ -43,7 +43,7 @@ serve(async (req) => {
 
     if (companyError) throw companyError
 
-    // 2. Criar o Usuário no Auth
+    // 2. Criar o Usuário no Auth do Supabase
     const { data: authUser, error: authError } = await supabaseClient.auth.admin.createUser({
       email,
       password,
@@ -53,9 +53,8 @@ serve(async (req) => {
 
     if (authError) throw authError
 
-    // 3. Vincular o perfil à empresa
+    // 3. Vincular o perfil à empresa localmente
     await new Promise(r => setTimeout(r, 500));
-    
     const { error: profileError } = await supabaseClient
       .from('profiles')
       .update({ 
@@ -66,6 +65,63 @@ serve(async (req) => {
       .eq('id', authUser.user.id)
 
     if (profileError) throw profileError
+
+    // 4. Integração com API Externa
+    console.log(`[create-company-user] Enviando dados para sistema externo...`);
+    
+    // Buscar limites do plano para enviar à API
+    let maxUsers = 1;
+    let maxConnections = 1;
+    
+    if (plan_id) {
+      const { data: planData } = await supabaseClient
+        .from('plans')
+        .select('user_limit, connection_limit')
+        .eq('id', plan_id)
+        .single();
+        
+      if (planData) {
+        maxUsers = planData.user_limit || 1;
+        maxConnections = planData.connection_limit || 1;
+      }
+    }
+
+    const externalPayload = {
+      status: status || 'active',
+      name: name,
+      maxUsers: maxUsers,
+      maxConnections: maxConnections,
+      acceptTerms: true,
+      email: email,
+      password: password,
+      userName: name, // Usando o nome da empresa como nome do usuário principal
+      profile: "admin"
+    };
+
+    // NOTA: Substitua a URL abaixo pela URL real da sua API externa
+    const EXTERNAL_API_URL = 'https://api.externalsystem.com/tenants'; 
+    
+    try {
+      const externalResponse = await fetch(EXTERNAL_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Caso precise de token, adicione aqui:
+          // 'Authorization': 'Bearer SEU_TOKEN_AQUI'
+        },
+        body: JSON.stringify(externalPayload)
+      });
+
+      if (!externalResponse.ok) {
+        const errorText = await externalResponse.text();
+        console.error(`[create-company-user] Erro na API externa: ${errorText}`);
+        // Opcional: Você pode decidir se falha o cadastro todo ou apenas loga o erro
+      } else {
+        console.log(`[create-company-user] Integração externa concluída com sucesso.`);
+      }
+    } catch (extError) {
+      console.error(`[create-company-user] Falha crítica ao chamar API externa:`, extError);
+    }
 
     return new Response(JSON.stringify({ success: true, companyId: company.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
