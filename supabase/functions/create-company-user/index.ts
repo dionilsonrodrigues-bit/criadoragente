@@ -93,7 +93,7 @@ serve(async (req) => {
       acceptTerms: true,
       email: email,
       password: password,
-      userName: name,
+      userName: name, // Nome do admin (estamos usando o nome da empresa aqui)
       profile: "admin"
     };
 
@@ -105,8 +105,8 @@ serve(async (req) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Ajustado: A maioria das integrações AtendiPRO usa o header 'apitoken'
-          'apitoken': API_TOKEN 
+          'Accept': '*/*',
+          'Authorization': `Bearer ${API_TOKEN}`
         },
         body: JSON.stringify(externalPayload)
       });
