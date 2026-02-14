@@ -10,6 +10,7 @@ import AgentWizard from "./pages/AgentWizard";
 import AgentsList from "./pages/AgentsList";
 import Departments from "./pages/Departments";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminCompanies from "./pages/AdminCompanies";
 import Plans from "./pages/Plans";
 import Login from "./pages/Login";
 import SuperLogin from "./pages/SuperLogin";
@@ -96,6 +97,7 @@ const App = () => (
               </ProtectedRoute>
             }>
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/companies" element={<AdminCompanies />} />
               <Route path="/admin/plans" element={<Plans />} />
             </Route>
 

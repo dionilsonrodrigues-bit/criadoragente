@@ -20,7 +20,8 @@ const Layout = () => {
   const isSuper = profile?.role === 'super_admin';
 
   const menuItems = isSuper ? [
-    { icon: ShieldCheck, label: 'Painel Master', path: '/admin' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
+    { icon: Building2, label: 'Empresas', path: '/admin/companies' },
     { icon: Package, label: 'Planos', path: '/admin/plans' },
   ] : [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
