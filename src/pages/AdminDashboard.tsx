@@ -96,7 +96,7 @@ const AdminDashboard = () => {
       description: formData.get('description') as string,
       plan_id: formData.get('planId') as string,
       status: formData.get('status') as string,
-      due_date: formData.get('dueDate') as string,
+      due_day: formData.get('dueDay') as string,
       recurrence: formData.get('recurrence') as string,
     };
 
@@ -107,7 +107,7 @@ const AdminDashboard = () => {
 
     try {
       if (createAdmin) {
-        // Chama a Edge Function para criar tudo junto, passando os novos campos
+        // Chama a Edge Function para criar tudo junto
         const { data, error } = await supabase.functions.invoke('create-company-user', {
           body: { ...companyData, ...adminData }
         });
@@ -322,8 +322,19 @@ const AdminDashboard = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Vencimento</Label>
-                  <Input name="dueDate" type="date" />
+                  <Label>Dia de Vencimento</Label>
+                  <Select name="dueDay">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Dia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 28 }, (_, i) => (
+                        <SelectItem key={i + 1} value={(i + 1).toString()}>
+                          {i + 1}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

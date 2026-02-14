@@ -19,12 +19,12 @@ serve(async (req) => {
 
     const { 
       name, atendi_id, email, password, phone, description, 
-      plan_id, status, due_date, recurrence 
+      plan_id, status, due_day, recurrence 
     } = await req.json()
     
     console.log(`[create-company-user] Iniciando cadastro: ${name} / ${email}`);
 
-    // 1. Criar a Empresa com todos os campos novos
+    // 1. Criar a Empresa
     const { data: company, error: companyError } = await supabaseClient
       .from('companies')
       .insert([{ 
@@ -34,7 +34,7 @@ serve(async (req) => {
         description,
         plan_id: plan_id || null,
         status: status || 'active',
-        due_date: due_date || null,
+        due_day: due_day ? parseInt(due_day) : null,
         recurrence: recurrence || 'monthly'
       }])
       .select()
