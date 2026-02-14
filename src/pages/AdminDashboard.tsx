@@ -56,12 +56,21 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setIsLoading(true);
     
+    // Buscando empresas e perfis vinculados
     const [companiesRes, plansRes] = await Promise.all([
-      supabase.from('companies').select('*, agents(id, status), profiles(id, email, role)').order('created_at', { ascending: false }),
+      supabase
+        .from('companies')
+        .select(`
+          *, 
+          agents(id, status), 
+          profiles:profiles!company_id(id, email, role)
+        `)
+        .order('created_at', { ascending: false }),
       supabase.from('plans').select('id, name').eq('status', 'active')
     ]);
 
     if (companiesRes.error) {
+      console.error("[Admin] Erro:", companiesRes.error);
       toast.error('Erro ao carregar empresas');
     } else {
       setCompanies(companiesRes.data || []);
@@ -184,6 +193,7 @@ const AdminDashboard = () => {
 
   const openEditDialog = (company: any) => {
     setEditingCompany(company);
+    // Procurando gestor na relação de perfis
     const admin = company.profiles?.find((p: any) => p.role === 'company_admin');
     setAdminUser(admin || null);
     setCreateAdmin(false);
@@ -277,7 +287,10 @@ const AdminDashboard = () => {
                           )}
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-                          <span className="flex items-center gap-1"><Mail size={12}/> {company.profiles?.find((p:any)=>p.role==='company_admin')?.email || 'Sem gestor'}</span>
+                          <span className="flex items-center gap-1">
+                            <Mail size={12}/> 
+                            {company.profiles?.find((p:any)=>p.role==='company_admin')?.email || 'Sem gestor'}
+                          </span>
                           <span className="text-slate-300">|</span>
                           <span>#{company.id.substring(0, 8)}</span>
                         </div>
