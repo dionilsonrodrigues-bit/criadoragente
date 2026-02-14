@@ -26,18 +26,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const isFetching = useRef(false);
 
-  const fetchProfileWithTimeout = async (userId: string): Promise<Profile | null> => {
+  const fetchProfile = async (userId: string): Promise<Profile | null> => {
+    // Se já estiver buscando, não inicia outra busca paralela
     if (isFetching.current) return null;
     isFetching.current = true;
     
     console.log("[Auth] Iniciando busca de perfil no banco...");
 
-    // Criamos uma promessa de timeout para não travar o app
+    // Aumentamos o timeout para 20 segundos para conexões mais lentas
     const timeoutPromise = new Promise<null>((resolve) => 
       setTimeout(() => {
-        console.warn("[Auth] Banco de dados demorou demais. Abortando busca.");
+        console.warn("[Auth] Timeout de 20s atingido ao buscar perfil.");
         resolve(null);
-      }, 5000)
+      }, 20000)
     );
 
     const queryPromise = (async () => {
@@ -45,22 +46,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', userId);
+          .eq('id', userId)
+          .maybeSingle();
 
         if (error) {
           console.error("[Auth] Erro na tabela profiles:", error.message);
           return null;
         }
 
-        if (data && data.length > 0) {
-          console.log("[Auth] Perfil carregado:", data[0].role);
-          return data[0] as Profile;
+        if (data) {
+          console.log("[Auth] Perfil carregado com sucesso:", data.role);
+          return data as Profile;
         }
 
-        console.warn("[Auth] Registro de perfil não encontrado no banco.");
+        console.warn("[Auth] Registro de perfil não encontrado.");
         return null;
       } catch (err) {
-        console.error("[Auth] Falha na conexão com banco:", err);
+        console.error("[Auth] Erro inesperado ao buscar perfil:", err);
         return null;
       }
     })();
@@ -73,7 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const retryProfile = async () => {
     if (!user) return;
     setLoading(true);
-    const p = await fetchProfileWithTimeout(user.id);
+    const p = await fetchProfile(user.id);
     setProfile(p);
     setLoading(false);
   };
@@ -91,10 +93,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("[Auth] Usuário logado detectado.");
         setSession(activeSession);
         setUser(activeSession.user);
-        const p = await fetchProfileWithTimeout(activeSession.user.id);
+        const p = await fetchProfile(activeSession.user.id);
         if (mounted) setProfile(p);
-      } else {
-        console.log("[Auth] Nenhum usuário logado.");
       }
       
       if (mounted) setLoading(false);
@@ -115,11 +115,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
-          // Só busca se ainda não tiver profile
-          if (!profile) {
-            const p = await fetchProfileWithTimeout(currentSession.user.id);
-            if (mounted) setProfile(p);
-          }
+          // Se mudou o usuário ou não tem profile, busca
+          const p = await fetchProfile(currentSession.user.id);
+          if (mounted) setProfile(p);
         }
         setLoading(false);
       }
