@@ -66,10 +66,9 @@ serve(async (req) => {
 
     if (profileError) throw profileError
 
-    // 4. Integração com API Externa
-    console.log(`[create-company-user] Enviando dados para sistema externo...`);
+    // 4. Integração com API AtendiPRO
+    console.log(`[create-company-user] Enviando dados para AtendiPRO...`);
     
-    // Buscar limites do plano para enviar à API
     let maxUsers = 1;
     let maxConnections = 1;
     
@@ -94,33 +93,31 @@ serve(async (req) => {
       acceptTerms: true,
       email: email,
       password: password,
-      userName: name, // Usando o nome da empresa como nome do usuário principal
+      userName: name,
       profile: "admin"
     };
 
-    // NOTA: Substitua a URL abaixo pela URL real da sua API externa
-    const EXTERNAL_API_URL = 'https://api.externalsystem.com/tenants'; 
+    const EXTERNAL_API_URL = 'https://back.atendipro.com.br/tenantApiStoreTenant'; 
+    const API_TOKEN = '0PMFACAB@F,f&hv]C+:9RvKSNC@1RAI*0OT63A78b8ksQ1UB3rXdn$vaSL3kfZ6';
     
     try {
       const externalResponse = await fetch(EXTERNAL_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Caso precise de token, adicione aqui:
-          // 'Authorization': 'Bearer SEU_TOKEN_AQUI'
+          'Authorization': `Bearer ${API_TOKEN}`
         },
         body: JSON.stringify(externalPayload)
       });
 
+      const responseText = await externalResponse.text();
       if (!externalResponse.ok) {
-        const errorText = await externalResponse.text();
-        console.error(`[create-company-user] Erro na API externa: ${errorText}`);
-        // Opcional: Você pode decidir se falha o cadastro todo ou apenas loga o erro
+        console.error(`[create-company-user] Erro na API externa (${externalResponse.status}): ${responseText}`);
       } else {
-        console.log(`[create-company-user] Integração externa concluída com sucesso.`);
+        console.log(`[create-company-user] Integração externa concluída: ${responseText}`);
       }
     } catch (extError) {
-      console.error(`[create-company-user] Falha crítica ao chamar API externa:`, extError);
+      console.error(`[create-company-user] Falha na comunicação com a API:`, extError);
     }
 
     return new Response(JSON.stringify({ success: true, companyId: company.id }), {
@@ -129,7 +126,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error(`[create-company-user] Erro:`, error.message)
+    console.error(`[create-company-user] Erro fatal:`, error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
