@@ -56,41 +56,44 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setIsLoading(true);
     
-    // Buscando empresas e perfis vinculados
-    const [companiesRes, plansRes] = await Promise.all([
-      supabase
-        .from('companies')
-        .select(`
-          *, 
-          agents(id, status), 
-          profiles:profiles!company_id(id, email, role)
-        `)
-        .order('created_at', { ascending: false }),
-      supabase.from('plans').select('id, name').eq('status', 'active')
-    ]);
+    try {
+      const [companiesRes, plansRes] = await Promise.all([
+        supabase
+          .from('companies')
+          .select(`
+            *, 
+            agents(id, status), 
+            profiles:profiles!company_id(id, email, role)
+          `)
+          .order('created_at', { ascending: false }),
+        supabase.from('plans').select('id, name').eq('status', 'active')
+      ]);
 
-    if (companiesRes.error) {
-      console.error("[Admin] Erro:", companiesRes.error);
-      toast.error('Erro ao carregar empresas');
-    } else {
-      setCompanies(companiesRes.data || []);
-      const totalAgents = companiesRes.data?.reduce((acc, comp) => acc + (comp.agents?.length || 0), 0) || 0;
-      const activeAgents = companiesRes.data?.reduce((acc, comp) => 
-        acc + (comp.agents?.filter((a: any) => a.status === 'active').length || 0), 0
-      ) || 0;
+      if (companiesRes.error) {
+        console.error("[Admin] Erro ao buscar empresas:", companiesRes.error.message);
+        toast.error('Erro de permissão ou conexão ao buscar empresas');
+      } else {
+        setCompanies(companiesRes.data || []);
+        const totalAgents = companiesRes.data?.reduce((acc, comp) => acc + (comp.agents?.length || 0), 0) || 0;
+        const activeAgents = companiesRes.data?.reduce((acc, comp) => 
+          acc + (comp.agents?.filter((a: any) => a.status === 'active').length || 0), 0
+        ) || 0;
 
-      setStats({
-        totalCompanies: companiesRes.data?.length || 0,
-        totalAgents,
-        activeAgents
-      });
+        setStats({
+          totalCompanies: companiesRes.data?.length || 0,
+          totalAgents,
+          activeAgents
+        });
+      }
+
+      if (plansRes.data) {
+        setPlans(plansRes.data);
+      }
+    } catch (err) {
+      console.error("[Admin] Erro fatal:", err);
+    } finally {
+      setIsLoading(false);
     }
-
-    if (plansRes.data) {
-      setPlans(plansRes.data);
-    }
-    
-    setIsLoading(false);
   };
 
   const formatPhone = (value: string) => {
@@ -193,7 +196,6 @@ const AdminDashboard = () => {
 
   const openEditDialog = (company: any) => {
     setEditingCompany(company);
-    // Procurando gestor na relação de perfis
     const admin = company.profiles?.find((p: any) => p.role === 'company_admin');
     setAdminUser(admin || null);
     setCreateAdmin(false);
