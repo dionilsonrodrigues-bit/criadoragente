@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, AlertCircle, Calendar, CreditCard } from 'lucide-react';
+import { Building2, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, AlertCircle, Calendar, CreditCard, Image as ImageIcon } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ const AdminCompanies = () => {
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [adminUser, setAdminUser] = useState<any>(null);
   const [phoneValue, setPhoneValue] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -97,6 +98,7 @@ const AdminCompanies = () => {
       status: formData.get('status') as string,
       due_day: formData.get('dueDay') ? parseInt(formData.get('dueDay') as string) : null,
       recurrence: formData.get('recurrence') as string,
+      logo_url: logoUrl,
     };
 
     try {
@@ -153,6 +155,7 @@ const AdminCompanies = () => {
     setEditingCompany(null);
     setAdminUser(null);
     setPhoneValue('');
+    setLogoUrl('');
     setIsDialogOpen(true);
   };
 
@@ -161,6 +164,7 @@ const AdminCompanies = () => {
     const admin = company.profiles?.find((p: any) => p.role === 'company_admin');
     setAdminUser(admin || null);
     setPhoneValue(company.phone || '');
+    setLogoUrl(company.logo_url || '');
     setIsDialogOpen(true);
   };
 
@@ -202,8 +206,12 @@ const AdminCompanies = () => {
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-400 uppercase">
-                    {company.name.charAt(0)}
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-400 uppercase overflow-hidden border">
+                    {company.logo_url ? (
+                      <img src={company.logo_url} alt={company.name} className="w-full h-full object-cover" />
+                    ) : (
+                      company.name.charAt(0)
+                    )}
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
@@ -218,8 +226,6 @@ const AdminCompanies = () => {
                         )}
                       </span>
                       {company.phone && <span className="flex items-center gap-1"><Phone size={12}/> {company.phone}</span>}
-                      
-                      {/* Novas informações de Plano e Vencimento */}
                       <span className="flex items-center gap-1 text-blue-600 font-medium">
                         <CreditCard size={12}/>
                         {company.plans?.name || 'Sem Plano'}
@@ -269,6 +275,26 @@ const AdminCompanies = () => {
             </DialogHeader>
             
             <div className="py-6 space-y-6">
+              <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                <div className="w-24 h-24 bg-white rounded-lg border flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageIcon className="text-slate-300" size={32} />
+                  )}
+                </div>
+                <div className="space-y-2 flex-1">
+                  <Label>URL da Logomarca (Quadrada)</Label>
+                  <Input 
+                    placeholder="https://exemplo.com/logo.png" 
+                    value={logoUrl} 
+                    onChange={(e) => setLogoUrl(e.target.value)} 
+                    className="bg-white"
+                  />
+                  <p className="text-[10px] text-slate-500 italic">Recomendado: 512x512px. Cole o link da imagem hospedada.</p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nome da Empresa</Label>

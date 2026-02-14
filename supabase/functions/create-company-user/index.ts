@@ -19,7 +19,7 @@ serve(async (req) => {
 
     const { 
       name, atendi_id, email, password, phone, description, 
-      plan_id, status, due_day, recurrence 
+      plan_id, status, due_day, recurrence, logo_url 
     } = await req.json()
     
     console.log(`[create-company-user] Iniciando cadastro: ${name} / ${email}`);
@@ -35,7 +35,8 @@ serve(async (req) => {
         plan_id: plan_id || null,
         status: status || 'active',
         due_day: due_day ? parseInt(due_day) : null,
-        recurrence: recurrence || 'monthly'
+        recurrence: recurrence || 'monthly',
+        logo_url: logo_url || null
       }])
       .select()
       .single()
@@ -52,7 +53,7 @@ serve(async (req) => {
 
     if (authError) throw authError
 
-    // 3. Vincular o perfil à empresa (Salvando o e-mail também)
+    // 3. Vincular o perfil à empresa
     await new Promise(r => setTimeout(r, 500));
     
     const { error: profileError } = await supabaseClient
@@ -60,7 +61,7 @@ serve(async (req) => {
       .update({ 
         company_id: company.id, 
         role: 'company_admin',
-        email: email // Salvando e-mail no perfil
+        email: email
       })
       .eq('id', authUser.user.id)
 

@@ -19,7 +19,7 @@ serve(async (req) => {
 
     const { 
       company_id, name, atendi_id, phone, description, plan_id, status, due_day, recurrence,
-      admin_email, admin_password 
+      admin_email, admin_password, logo_url 
     } = await req.json()
 
     console.log(`[update-company-full] Atualizando empresa ID: ${company_id}`);
@@ -29,7 +29,7 @@ serve(async (req) => {
       .from('companies')
       .update({ 
         name, atendi_id, phone, description, plan_id, status, 
-        due_day: parseInt(due_day), recurrence 
+        due_day: parseInt(due_day), recurrence, logo_url: logo_url || null
       })
       .eq('id', company_id);
 
@@ -58,7 +58,6 @@ serve(async (req) => {
 
       if (authUpdateError) throw authUpdateError;
 
-      // Se mudou o e-mail, atualiza também no profile
       if (admin_email) {
         await supabaseClient
           .from('profiles')
