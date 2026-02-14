@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Calendar, Save, X } from 'lucide-react';
+import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Calendar, Save, X, Mail, Lock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [adminUser, setAdminUser] = useState<any>(null);
   const [createAdmin, setCreateAdmin] = useState(true);
   
   const [stats, setStats] = useState({
@@ -55,7 +56,7 @@ const AdminDashboard = () => {
     setIsLoading(true);
     
     const [companiesRes, plansRes] = await Promise.all([
-      supabase.from('companies').select('*, agents(id, status)').order('created_at', { ascending: false }),
+      supabase.from('companies').select('*, agents(id, status), profiles(id, email, role)').order('created_at', { ascending: false }),
       supabase.from('plans').select('id, name').eq('status', 'active')
     ]);
 
@@ -100,14 +101,18 @@ const AdminDashboard = () => {
 
     try {
       if (editingCompany) {
-        // Atualização
-        const { error } = await supabase
-          .from('companies')
-          .update(companyData)
-          .eq('id', editingCompany.id);
+        // Atualização via Edge Function para permitir editar Auth User
+        const { error } = await supabase.functions.invoke('update-company-full', {
+          body: { 
+            company_id: editingCompany.id,
+            ...companyData,
+            admin_email: formData.get('adminEmail') as string,
+            admin_password: formData.get('adminPassword') as string || null
+          }
+        });
 
         if (error) throw error;
-        toast.success('Empresa atualizada com sucesso!');
+        toast.success('Empresa e Gestor atualizados!');
       } else {
         // Criação (Novo)
         const adminData = {
@@ -152,12 +157,15 @@ const AdminDashboard = () => {
 
   const openNewDialog = () => {
     setEditingCompany(null);
+    setAdminUser(null);
     setCreateAdmin(true);
     setIsDialogOpen(true);
   };
 
   const openEditDialog = (company: any) => {
     setEditingCompany(company);
+    const admin = company.profiles?.find((p: any) => p.role === 'company_admin');
+    setAdminUser(admin || null);
     setCreateAdmin(false);
     setIsDialogOpen(true);
   };
@@ -247,7 +255,11 @@ const AdminDashboard = () => {
                              <Badge variant="destructive" className="text-[10px]">Inativo</Badge>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 italic">#{company.id.substring(0, 8)}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                          <span className="flex items-center gap-1"><Mail size={12}/> {company.profiles?.find((p:any)=>p.role==='company_admin')?.email || 'Sem gestor'}</span>
+                          <span className="text-slate-300">|</span>
+                          <span>#{company.id.substring(0, 8)}</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -281,7 +293,7 @@ const AdminDashboard = () => {
         <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleSaveCompany}>
             <DialogHeader>
-              <DialogTitle>{editingCompany ? 'Editar Empresa' : 'Cadastrar Nova Empresa'}</DialogTitle>
+              <DialogTitle>{editingCompany ? 'Editar Empresa e Gestor' : 'Cadastrar Nova Empresa'}</DialogTitle>
               <DialogDescription>
                 {editingCompany ? `Atualizando dados da empresa ${editingCompany.name}` : 'Crie uma instância e configure os dados contratuais.'}
               </DialogDescription>
@@ -374,38 +386,37 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
+              {/* Seção do Gestor (Sempre visível agora) */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-slate-500 font-bold">Dados de Acesso (Gestor)</span>
+                </div>
+              </div>
+
               {!editingCompany && (
-                <>
-                  {/* Acesso Admin (Apenas para novos cadastros) */}
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-slate-500 font-bold">Acesso do Administrador</span>
+                <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-lg">
+                  <Checkbox id="createAdmin" checked={createAdmin} onCheckedChange={(v) => setCreateAdmin(!!v)} />
+                  <Label htmlFor="createAdmin" className="text-sm font-medium cursor-pointer">
+                    Criar conta de usuário para o gestor da empresa
+                  </Label>
+                </div>
+              )}
+
+              {(createAdmin || editingCompany) && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Mail size={14}/> E-mail do Gestor</Label>
+                      <Input name="adminEmail" type="email" defaultValue={adminUser?.email} placeholder="gestor@empresa.com" required />
+                      {editingCompany && <p className="text-[10px] text-amber-600 font-medium">Nota: Alterar o e-mail mudará o login do usuário.</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Lock size={14}/> {editingCompany ? 'Nova Senha (Opcional)' : 'Senha Temporária'}</Label>
+                      <Input name="adminPassword" type="password" placeholder={editingCompany ? "Deixe em branco para manter" : "••••••••"} required={!editingCompany} />
                     </div>
                   </div>
-
-                  <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-lg">
-                    <Checkbox id="createAdmin" checked={createAdmin} onCheckedChange={(v) => setCreateAdmin(!!v)} />
-                    <Label htmlFor="createAdmin" className="text-sm font-medium cursor-pointer">
-                      Criar conta de usuário para o gestor da empresa
-                    </Label>
-                  </div>
-
-                  {createAdmin && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>E-mail do Administrador</Label>
-                          <Input name="adminEmail" type="email" placeholder="gestor@empresa.com" required={createAdmin} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Senha Temporária</Label>
-                          <Input name="adminPassword" type="password" placeholder="••••••••" required={createAdmin} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
             </div>
             <DialogFooter>

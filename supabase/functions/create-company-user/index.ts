@@ -52,12 +52,16 @@ serve(async (req) => {
 
     if (authError) throw authError
 
-    // 3. Vincular o perfil à empresa
+    // 3. Vincular o perfil à empresa (Salvando o e-mail também)
     await new Promise(r => setTimeout(r, 500));
     
     const { error: profileError } = await supabaseClient
       .from('profiles')
-      .update({ company_id: company.id, role: 'company_admin' })
+      .update({ 
+        company_id: company.id, 
+        role: 'company_admin',
+        email: email // Salvando e-mail no perfil
+      })
       .eq('id', authUser.user.id)
 
     if (profileError) throw profileError
