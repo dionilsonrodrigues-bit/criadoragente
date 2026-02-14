@@ -25,18 +25,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfileWithTimeout = async (userId: string): Promise<Profile | null> => {
+    // Cria uma promessa que rejeita após 3 segundos
+    const timeout = new Promise<null>((_, reject) => 
+      setTimeout(() => reject(new Error("Timeout ao carregar perfil")), 3000)
+    );
+
     try {
-      const { data, error } = await supabase
+      // Tenta buscar o perfil, mas desiste se demorar mais que o timeout
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data as Profile;
+        });
 
-      if (error) throw error;
-      return data as Profile;
+      return await Promise.race([profilePromise, timeout]);
     } catch (err) {
-      console.error("[Auth] Erro ao carregar perfil:", err);
+      console.error("[Auth] Erro ou Timeout no perfil:", err);
       return null;
     }
   };
@@ -44,43 +53,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const retryProfile = async () => {
     if (!user) return;
     setLoading(true);
-    const p = await fetchProfile(user.id);
+    const p = await fetchProfileWithTimeout(user.id);
     setProfile(p);
     setLoading(false);
   };
 
   useEffect(() => {
     const initialize = async () => {
-      // 1. Pega a sessão inicial
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      
-      if (initialSession) {
-        setSession(initialSession);
-        setUser(initialSession.user);
-        const p = await fetchProfile(initialSession.user.id);
-        setProfile(p);
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (initialSession) {
+          setSession(initialSession);
+          setUser(initialSession.user);
+          // Buscamos o perfil, mas não deixamos o app travar se ele falhar
+          const p = await fetchProfileWithTimeout(initialSession.user.id);
+          setProfile(p);
+        }
+      } catch (e) {
+        console.error("[Auth] Falha na inicialização:", e);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     initialize();
 
-    // 2. Escuta mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
         setProfile(null);
+        setLoading(false);
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
-          const p = await fetchProfile(currentSession.user.id);
+          const p = await fetchProfileWithTimeout(currentSession.user.id);
           setProfile(p);
         }
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
