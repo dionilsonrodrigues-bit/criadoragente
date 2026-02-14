@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Calendar, Save, X, Mail, Lock } from 'lucide-react';
+import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Calendar, Save, X, Mail, Lock, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -433,7 +433,14 @@ const AdminDashboard = () => {
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-2"><Mail size={14}/> E-mail do Gestor</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2"><Mail size={14}/> E-mail do Gestor</Label>
+                        {editingCompany && adminUser && (
+                          <Badge variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200 gap-1">
+                            <CheckCircle2 size={10} /> Usuário Cadastrado
+                          </Badge>
+                        )}
+                      </div>
                       <Input name="adminEmail" type="email" defaultValue={adminUser?.email} placeholder="gestor@empresa.com" required />
                     </div>
                     <div className="space-y-2">
