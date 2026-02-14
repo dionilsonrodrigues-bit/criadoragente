@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus } from 'lucide-react';
+import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,11 +20,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 
 const AdminDashboard = () => {
   const [companies, setCompanies] = useState<any[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,26 +54,33 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     setIsLoading(true);
-    const { data: companiesData, error: companiesError } = await supabase
-      .from('companies')
-      .select('*, agents(id, status)')
-      .order('created_at', { ascending: false });
+    
+    // Buscar empresas e planos em paralelo
+    const [companiesRes, plansRes] = await Promise.all([
+      supabase.from('companies').select('*, agents(id, status)').order('created_at', { ascending: false }),
+      supabase.from('plans').select('id, name').eq('status', 'active')
+    ]);
 
-    if (companiesError) {
+    if (companiesRes.error) {
       toast.error('Erro ao carregar empresas');
     } else {
-      setCompanies(companiesData || []);
-      const totalAgents = companiesData?.reduce((acc, comp) => acc + (comp.agents?.length || 0), 0) || 0;
-      const activeAgents = companiesData?.reduce((acc, comp) => 
+      setCompanies(companiesRes.data || []);
+      const totalAgents = companiesRes.data?.reduce((acc, comp) => acc + (comp.agents?.length || 0), 0) || 0;
+      const activeAgents = companiesRes.data?.reduce((acc, comp) => 
         acc + (comp.agents?.filter((a: any) => a.status === 'active').length || 0), 0
       ) || 0;
 
       setStats({
-        totalCompanies: companiesData?.length || 0,
+        totalCompanies: companiesRes.data?.length || 0,
         totalAgents,
         activeAgents
       });
     }
+
+    if (plansRes.data) {
+      setPlans(plansRes.data);
+    }
+    
     setIsLoading(false);
   };
 
@@ -72,23 +88,35 @@ const AdminDashboard = () => {
     e.preventDefault();
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    const name = formData.get('companyName') as string;
-    const atendi_id = formData.get('atendiId') as string;
-    const email = formData.get('adminEmail') as string;
-    const password = formData.get('adminPassword') as string;
+    
+    const companyData = {
+      name: formData.get('companyName') as string,
+      atendi_id: formData.get('atendiId') as string,
+      phone: formData.get('phone') as string,
+      description: formData.get('description') as string,
+      plan_id: formData.get('planId') as string,
+      status: formData.get('status') as string,
+      due_date: formData.get('dueDate') as string,
+      recurrence: formData.get('recurrence') as string,
+    };
+
+    const adminData = {
+      email: formData.get('adminEmail') as string,
+      password: formData.get('adminPassword') as string,
+    };
 
     try {
       if (createAdmin) {
-        // Chama a Edge Function para criar tudo junto
+        // Chama a Edge Function para criar tudo junto, passando os novos campos
         const { data, error } = await supabase.functions.invoke('create-company-user', {
-          body: { name, atendi_id, email, password }
+          body: { ...companyData, ...adminData }
         });
 
         if (error) throw error;
         toast.success('Empresa e Usuário criados com sucesso!');
       } else {
         // Apenas cria a empresa normalmente
-        const { error } = await supabase.from('companies').insert([{ name, atendi_id }]);
+        const { error } = await supabase.from('companies').insert([companyData]);
         if (error) throw error;
         toast.success('Empresa cadastrada!');
       }
@@ -99,37 +127,6 @@ const AdminDashboard = () => {
       toast.error(`Erro: ${err.message || 'Falha ao processar'}`);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdateCompany = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!selectedCompany) return;
-
-    const formData = new FormData(e.currentTarget);
-    const name = formData.get('editName') as string;
-    const atendi_id = formData.get('editAtendiId') as string;
-    
-    const { error } = await supabase
-      .from('companies')
-      .update({ name, atendi_id })
-      .eq('id', selectedCompany.id);
-
-    if (error) toast.error('Erro ao atualizar');
-    else {
-      toast.success('Empresa atualizada!');
-      setIsEditDialogOpen(false);
-      fetchData();
-    }
-  };
-
-  const handleDeleteCompany = async (id: string, name: string) => {
-    if (!confirm(`Excluir "${name}"? Isso removerá todos os dados vinculados.`)) return;
-    const { error } = await supabase.from('companies').delete().eq('id', id);
-    if (error) toast.error('Erro ao excluir');
-    else {
-      toast.success('Empresa removida');
-      fetchData();
     }
   };
 
@@ -212,6 +209,9 @@ const AdminDashboard = () => {
                         <div className="flex items-center gap-2">
                           <h4 className="font-bold text-slate-800">{company.name}</h4>
                           <Badge variant="outline" className="text-[10px] bg-slate-50">ID: {company.atendi_id}</Badge>
+                          {company.status === 'inactive' && (
+                             <Badge variant="destructive" className="text-[10px]">Inativo</Badge>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500 italic">#{company.id.substring(0, 8)}</p>
                       </div>
@@ -244,14 +244,15 @@ const AdminDashboard = () => {
       </div>
 
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleAddCompany}>
             <DialogHeader>
               <DialogTitle>Cadastrar Nova Empresa</DialogTitle>
-              <DialogDescription>Crie uma instância e configure o acesso do administrador.</DialogDescription>
+              <DialogDescription>Crie uma instância e configure os dados contratuais.</DialogDescription>
             </DialogHeader>
             <div className="py-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              {/* Dados Básicos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nome da Empresa</Label>
                   <Input name="companyName" placeholder="Ex: Acme Corp" required />
@@ -260,8 +261,73 @@ const AdminDashboard = () => {
                   <Label>ID AtendiPRO</Label>
                   <Input name="atendiId" placeholder="Ex: 550" required />
                 </div>
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input name="phone" placeholder="(00) 00000-0000" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select name="status" defaultValue="active">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="inactive">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Textarea name="description" placeholder="Observações sobre a empresa..." rows={2} />
+              </div>
+
+              {/* Dados do Plano */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-slate-500 font-bold">Plano e Pagamento</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Plano</Label>
+                  <Select name="planId">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plans.map(plan => (
+                        <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Recorrência</Label>
+                  <Select name="recurrence" defaultValue="monthly">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                      <SelectItem value="bimestral">Bimestral</SelectItem>
+                      <SelectItem value="trimestral">Trimestral</SelectItem>
+                      <SelectItem value="semestral">Semestral</SelectItem>
+                      <SelectItem value="annual">Anual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Vencimento</Label>
+                  <Input name="dueDate" type="date" />
+                </div>
+              </div>
+
+              {/* Acesso Admin */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
                 <div className="relative flex justify-center text-xs uppercase">
@@ -278,13 +344,15 @@ const AdminDashboard = () => {
 
               {createAdmin && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-2">
-                    <Label>E-mail do Administrador</Label>
-                    <Input name="adminEmail" type="email" placeholder="gestor@empresa.com" required={createAdmin} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Senha Temporária</Label>
-                    <Input name="adminPassword" type="password" placeholder="••••••••" required={createAdmin} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>E-mail do Administrador</Label>
+                      <Input name="adminEmail" type="email" placeholder="gestor@empresa.com" required={createAdmin} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Senha Temporária</Label>
+                      <Input name="adminPassword" type="password" placeholder="••••••••" required={createAdmin} />
+                    </div>
                   </div>
                 </div>
               )}

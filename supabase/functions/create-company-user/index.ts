@@ -17,13 +17,26 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { name, atendi_id, email, password } = await req.json()
+    const { 
+      name, atendi_id, email, password, phone, description, 
+      plan_id, status, due_date, recurrence 
+    } = await req.json()
+    
     console.log(`[create-company-user] Iniciando cadastro: ${name} / ${email}`);
 
-    // 1. Criar a Empresa
+    // 1. Criar a Empresa com todos os campos novos
     const { data: company, error: companyError } = await supabaseClient
       .from('companies')
-      .insert([{ name, atendi_id }])
+      .insert([{ 
+        name, 
+        atendi_id,
+        phone,
+        description,
+        plan_id: plan_id || null,
+        status: status || 'active',
+        due_date: due_date || null,
+        recurrence: recurrence || 'monthly'
+      }])
       .select()
       .single()
 
@@ -39,8 +52,7 @@ serve(async (req) => {
 
     if (authError) throw authError
 
-    // 3. Vincular o perfil à empresa (o perfil é criado via trigger automática)
-    // Damos um pequeno delay para garantir que o trigger de perfil já rodou
+    // 3. Vincular o perfil à empresa
     await new Promise(r => setTimeout(r, 500));
     
     const { error: profileError } = await supabaseClient
