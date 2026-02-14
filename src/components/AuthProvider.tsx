@@ -27,49 +27,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isFetching = useRef(false);
 
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
-    // Se já estiver buscando, não inicia outra busca paralela
     if (isFetching.current) return null;
     isFetching.current = true;
     
-    console.log("[Auth] Iniciando busca de perfil no banco...");
+    console.log("[Auth] Buscando perfil...");
 
-    // Aumentamos o timeout para 20 segundos para conexões mais lentas
-    const timeoutPromise = new Promise<null>((resolve) => 
-      setTimeout(() => {
-        console.warn("[Auth] Timeout de 20s atingido ao buscar perfil.");
-        resolve(null);
-      }, 20000)
-    );
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-    const queryPromise = (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (error) {
-          console.error("[Auth] Erro na tabela profiles:", error.message);
-          return null;
-        }
-
-        if (data) {
-          console.log("[Auth] Perfil carregado com sucesso:", data.role);
-          return data as Profile;
-        }
-
-        console.warn("[Auth] Registro de perfil não encontrado.");
-        return null;
-      } catch (err) {
-        console.error("[Auth] Erro inesperado ao buscar perfil:", err);
+      if (error) {
+        console.error("[Auth] Erro ao buscar perfil:", error.message);
         return null;
       }
-    })();
 
-    const result = await Promise.race([queryPromise, timeoutPromise]);
-    isFetching.current = false;
-    return result;
+      return data as Profile;
+    } catch (err) {
+      console.error("[Auth] Falha crítica na busca do perfil:", err);
+      return null;
+    } finally {
+      isFetching.current = false;
+    }
   };
 
   const retryProfile = async () => {
@@ -84,13 +65,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
 
     const startApp = async () => {
-      console.log("[Auth] Verificando sessão local...");
       const { data: { session: activeSession } } = await supabase.auth.getSession();
       
       if (!mounted) return;
 
       if (activeSession) {
-        console.log("[Auth] Usuário logado detectado.");
         setSession(activeSession);
         setUser(activeSession.user);
         const p = await fetchProfile(activeSession.user.id);
@@ -103,7 +82,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     startApp();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("[Auth] Mudança de estado:", event);
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT') {
@@ -115,7 +93,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
-          // Se mudou o usuário ou não tem profile, busca
           const p = await fetchProfile(currentSession.user.id);
           if (mounted) setProfile(p);
         }
@@ -130,7 +107,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    setLoading(true);
     await supabase.auth.signOut();
     window.location.href = '/login';
   };

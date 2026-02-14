@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Calendar, Save, X, Mail, Lock, CheckCircle2 } from 'lucide-react';
+import { Building2, Globe, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,6 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     setIsLoading(true);
-    
     try {
       const [companiesRes, plansRes] = await Promise.all([
         supabase
@@ -70,8 +69,7 @@ const AdminDashboard = () => {
       ]);
 
       if (companiesRes.error) {
-        console.error("[Admin] Erro ao buscar empresas:", companiesRes.error.message);
-        toast.error('Erro de permissão ou conexão ao buscar empresas');
+        toast.error('Erro ao buscar empresas. Verifique as políticas de RLS.');
       } else {
         setCompanies(companiesRes.data || []);
         const totalAgents = companiesRes.data?.reduce((acc, comp) => acc + (comp.agents?.length || 0), 0) || 0;
@@ -86,33 +84,19 @@ const AdminDashboard = () => {
         });
       }
 
-      if (plansRes.data) {
-        setPlans(plansRes.data);
-      }
+      if (plansRes.data) setPlans(plansRes.data);
     } catch (err) {
-      console.error("[Admin] Erro fatal:", err);
+      console.error("[Admin] Falha ao carregar dados:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      let result = numbers;
-      if (numbers.length > 2) {
-        result = `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-      }
-      if (numbers.length > 7) {
-        result = `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-      }
-      return result;
-    }
-    return phoneValue;
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value);
+    const numbers = e.target.value.replace(/\D/g, '');
+    let formatted = numbers;
+    if (numbers.length > 2) formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    if (numbers.length > 7) formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
     setPhoneValue(formatted);
   };
 
@@ -142,18 +126,16 @@ const AdminDashboard = () => {
             admin_password: formData.get('adminPassword') as string || null
           }
         });
-
         if (error) throw error;
         toast.success('Empresa e Gestor atualizados!');
       } else {
-        const adminData = {
-          email: formData.get('adminEmail') as string,
-          password: formData.get('adminPassword') as string,
-        };
-
         if (createAdmin) {
           const { error } = await supabase.functions.invoke('create-company-user', {
-            body: { ...companyData, ...adminData }
+            body: { 
+              ...companyData, 
+              email: formData.get('adminEmail') as string,
+              password: formData.get('adminPassword') as string
+            }
           });
           if (error) throw error;
           toast.success('Empresa e Usuário criados!');
@@ -163,26 +145,12 @@ const AdminDashboard = () => {
           toast.success('Empresa cadastrada!');
         }
       }
-      
       setIsDialogOpen(false);
       fetchData();
     } catch (err: any) {
       toast.error(`Erro: ${err.message || 'Falha ao processar'}`);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteCompany = async (id: string, name: string) => {
-    if (!confirm(`Deseja realmente excluir a empresa "${name}"? Esta ação não pode ser desfeita.`)) return;
-    
-    try {
-      const { error } = await supabase.from('companies').delete().eq('id', id);
-      if (error) throw error;
-      toast.success('Empresa excluída com sucesso');
-      fetchData();
-    } catch (err: any) {
-      toast.error(`Erro ao excluir: ${err.message}`);
     }
   };
 
@@ -232,97 +200,68 @@ const AdminDashboard = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="border-none shadow-sm ring-1 ring-black/5">
-            <CardHeader className="border-b bg-slate-50/50">
-              <CardTitle className="text-lg">Configurações Globais</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-6">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-gray-400">Webhook Base n8n</Label>
-                <Input defaultValue="https://n8n.atendipro.com.br/webhook" />
-              </div>
-              <Button className="w-full bg-slate-900">Salvar Alterações</Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h3 className="text-xl font-bold text-slate-900">Empresas Cadastradas</h3>
-            <div className="flex gap-3">
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                <Input 
-                  className="pl-10" 
-                  placeholder="Buscar empresa..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <Button className="gap-2" onClick={openNewDialog}>
-                <Plus size={18} /> Nova Empresa
-              </Button>
-            </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h3 className="text-xl font-bold text-slate-900">Empresas Cadastradas</h3>
+        <div className="flex gap-3">
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Input 
+              className="pl-10" 
+              placeholder="Buscar empresa..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          
-          <div className="space-y-3">
-            {isLoading ? (
-              <div className="h-40 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>
-            ) : filteredCompanies.length === 0 ? (
-              <div className="text-center py-10 text-gray-400 italic">Nenhuma empresa encontrada.</div>
-            ) : filteredCompanies.map((company) => (
-              <Card key={company.id} className="hover:border-blue-200 transition-colors border-none shadow-sm ring-1 ring-black/5">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-400 uppercase">
-                        {company.name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-slate-800">{company.name}</h4>
-                          <Badge variant="outline" className="text-[10px] bg-slate-50">ID: {company.atendi_id}</Badge>
-                          {company.status === 'inactive' && (
-                             <Badge variant="destructive" className="text-[10px]">Inativo</Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-                          <span className="flex items-center gap-1">
-                            <Mail size={12}/> 
-                            {company.profiles?.find((p:any)=>p.role==='company_admin')?.email || 'Sem gestor'}
-                          </span>
-                          <span className="text-slate-300">|</span>
-                          <span>#{company.id.substring(0, 8)}</span>
-                        </div>
-                      </div>
+          <Button className="gap-2" onClick={openNewDialog}>
+            <Plus size={18} /> Nova Empresa
+          </Button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 gap-4">
+        {isLoading ? (
+          <div className="h-40 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>
+        ) : filteredCompanies.length === 0 ? (
+          <div className="text-center py-10 text-gray-400 italic border rounded-lg bg-slate-50">Nenhuma empresa encontrada.</div>
+        ) : filteredCompanies.map((company) => (
+          <Card key={company.id} className="hover:border-blue-200 transition-colors border-none shadow-sm ring-1 ring-black/5">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-400 uppercase">
+                    {company.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-slate-800">{company.name}</h4>
+                      <Badge variant="outline" className="text-[10px] bg-slate-50">ID: {company.atendi_id}</Badge>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right hidden sm:block">
-                        <p className="text-xs font-medium text-gray-400 uppercase">Agentes</p>
-                        <p className="font-bold">{company.agents?.length || 0}</p>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="gap-2">Ações <MoreVertical size={14} /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(company)}>
-                            <Edit2 size={14} className="mr-2" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteCompany(company.id, company.name)}>
-                            <Trash2 size={14} className="mr-2" /> Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Mail size={12}/> 
+                        {company.profiles?.find((p:any)=>p.role==='company_admin')?.email || (
+                          <span className="text-red-400 flex items-center gap-1"><AlertCircle size={10}/> Gestor não carregado</span>
+                        )}
+                      </span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">Ações <MoreVertical size={14} /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openEditDialog(company)}>
+                        <Edit2 size={14} className="mr-2" /> Editar
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -335,7 +274,6 @@ const AdminDashboard = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="py-6 space-y-6">
-              {/* Dados Básicos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nome da Empresa</Label>
@@ -345,89 +283,8 @@ const AdminDashboard = () => {
                   <Label>ID AtendiPRO</Label>
                   <Input name="atendiId" defaultValue={editingCompany?.atendi_id} placeholder="Ex: 550" required />
                 </div>
-                <div className="space-y-2">
-                  <Label>Telefone</Label>
-                  <Input 
-                    name="phone" 
-                    value={phoneValue} 
-                    onChange={handlePhoneChange} 
-                    placeholder="(00) 00000-0000" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select name="status" defaultValue={editingCompany?.status || "active"}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Ativo</SelectItem>
-                      <SelectItem value="inactive">Inativo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Descrição</Label>
-                <Textarea name="description" defaultValue={editingCompany?.description} placeholder="Observações sobre a empresa..." rows={2} />
-              </div>
-
-              {/* Dados do Plano */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-slate-500 font-bold">Plano e Pagamento</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Plano</Label>
-                  <Select name="planId" defaultValue={editingCompany?.plan_id}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {plans.map(plan => (
-                        <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Recorrência</Label>
-                  <Select name="recurrence" defaultValue={editingCompany?.recurrence || "monthly"}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                      <SelectItem value="bimestral">Bimestral</SelectItem>
-                      <SelectItem value="trimestral">Trimestral</SelectItem>
-                      <SelectItem value="semestral">Semestral</SelectItem>
-                      <SelectItem value="annual">Anual</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Dia de Vencimento</Label>
-                  <Select name="dueDay" defaultValue={editingCompany?.due_day?.toString()}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Dia" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 28 }, (_, i) => (
-                        <SelectItem key={i + 1} value={(i + 1).toString()}>
-                          {i + 1}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Seção do Gestor */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
                 <div className="relative flex justify-center text-xs uppercase">
@@ -435,17 +292,8 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {!editingCompany && (
-                <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-lg">
-                  <Checkbox id="createAdmin" checked={createAdmin} onCheckedChange={(v) => setCreateAdmin(!!v)} />
-                  <Label htmlFor="createAdmin" className="text-sm font-medium cursor-pointer">
-                    Criar conta de usuário para o gestor da empresa
-                  </Label>
-                </div>
-              )}
-
               {(createAdmin || editingCompany) && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
@@ -457,10 +305,13 @@ const AdminDashboard = () => {
                         )}
                       </div>
                       <Input name="adminEmail" type="email" defaultValue={adminUser?.email} placeholder="gestor@empresa.com" required />
+                      {editingCompany && !adminUser && (
+                        <p className="text-[10px] text-red-500">Aviso: Perfil do gestor não encontrado ou sem acesso.</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2"><Lock size={14}/> {editingCompany ? 'Nova Senha (Opcional)' : 'Senha Temporária'}</Label>
-                      <Input name="adminPassword" type="password" placeholder={editingCompany ? "Deixe em branco para manter" : "••••••••"} required={!editingCompany} />
+                      <Input name="adminPassword" type="password" placeholder={editingCompany ? "Manter atual" : "••••••••"} required={!editingCompany} />
                     </div>
                   </div>
                 </div>
