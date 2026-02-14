@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Building2, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, AlertCircle, Calendar, CreditCard, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Building2, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, AlertCircle, Calendar, CreditCard, Image as ImageIcon, Upload } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,12 +35,14 @@ const AdminCompanies = () => {
   const [plans, setPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [adminUser, setAdminUser] = useState<any>(null);
   const [phoneValue, setPhoneValue] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -82,6 +84,42 @@ const AdminCompanies = () => {
     if (numbers.length > 2) formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
     if (numbers.length > 7) formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
     setPhoneValue(formatted);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione uma imagem válida.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('logos')
+        .getPublicUrl(filePath);
+
+      setLogoUrl(publicUrl);
+      toast.success('Logo enviada com sucesso!');
+    } catch (error: any) {
+      console.error('Erro no upload:', error);
+      toast.error('Erro ao enviar imagem. Verifique se o bucket "logos" existe e é público.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSaveCompany = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -276,22 +314,50 @@ const AdminCompanies = () => {
             
             <div className="py-6 space-y-6">
               <div className="flex items-center gap-6 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                <div className="w-24 h-24 bg-white rounded-lg border flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                  {logoUrl ? (
-                    <img src={logoUrl} alt="Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon className="text-slate-300" size={32} />
-                  )}
+                <div className="relative group">
+                  <div className="w-24 h-24 bg-white rounded-lg border flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="text-slate-300" size={32} />
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg disabled:opacity-50"
+                  >
+                    {isUploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
                 </div>
                 <div className="space-y-2 flex-1">
-                  <Label>URL da Logomarca (Quadrada)</Label>
-                  <Input 
-                    placeholder="https://exemplo.com/logo.png" 
-                    value={logoUrl} 
-                    onChange={(e) => setLogoUrl(e.target.value)} 
-                    className="bg-white"
-                  />
-                  <p className="text-[10px] text-slate-500 italic">Recomendado: 512x512px. Cole o link da imagem hospedada.</p>
+                  <Label>Logomarca (Quadrada)</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="URL da imagem ou clique no ícone ao lado para upload" 
+                      value={logoUrl} 
+                      onChange={(e) => setLogoUrl(e.target.value)} 
+                      className="bg-white"
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? <Loader2 className="animate-spin mr-2" size={16} /> : <Upload className="mr-2" size={16} />}
+                      Upload
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-slate-500 italic">Recomendado: 512x512px. Você pode colar um link ou fazer upload direto.</p>
                 </div>
               </div>
 
