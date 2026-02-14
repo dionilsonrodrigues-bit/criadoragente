@@ -90,7 +90,6 @@ const AdminCompanies = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo de arquivo
     if (!file.type.startsWith('image/')) {
       toast.error('Por favor, selecione uma imagem válida.');
       return;
@@ -116,7 +115,7 @@ const AdminCompanies = () => {
       toast.success('Logo enviada com sucesso!');
     } catch (error: any) {
       console.error('Erro no upload:', error);
-      toast.error('Erro ao enviar imagem. Verifique se o bucket "logos" existe e é público.');
+      toast.error('Erro ao enviar imagem.');
     } finally {
       setIsUploading(false);
     }
@@ -172,20 +171,22 @@ const AdminCompanies = () => {
   };
 
   const handleDeleteCompany = async (id: string, name: string) => {
-    if (!confirm(`Tem certeza que deseja excluir a empresa "${name}"? Esta ação não pode ser desfeita.`)) return;
+    if (!confirm(`Tem certeza que deseja excluir a empresa "${name}"? Todos os usuários, agentes e dados vinculados serão removidos permanentemente.`)) return;
 
+    setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from('companies')
-        .delete()
-        .eq('id', id);
+      // Usando a nova Edge Function para exclusão completa (Auth + DB)
+      const { error } = await supabase.functions.invoke('delete-company-full', {
+        body: { company_id: id }
+      });
 
       if (error) throw error;
       
-      toast.success('Empresa excluída com sucesso!');
+      toast.success('Empresa e todos os vínculos excluídos!');
       fetchData();
     } catch (err: any) {
       toast.error(`Erro ao excluir: ${err.message}`);
+      setIsLoading(false);
     }
   };
 
