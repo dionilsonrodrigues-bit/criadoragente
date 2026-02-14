@@ -9,18 +9,19 @@ import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 
 const SuperLogin = () => {
-  const { session, profile } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  // Se já tem sessão, tenta ir para o admin. O ProtectedRoute fará a checagem final.
   useEffect(() => {
-    if (session && profile?.role === 'super_admin') {
+    if (session) {
       navigate('/admin');
     }
-  }, [session, profile, navigate]);
+  }, [session, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +35,8 @@ const SuperLogin = () => {
     if (error) {
       toast.error('Credenciais master inválidas.');
     } else {
-      // O redirecionamento será tratado pelo useEffect acima após o perfil carregar
       toast.success('Acesso master autorizado!');
+      // A navegação acontecerá pelo useEffect acima
     }
     setLoading(false);
   };
