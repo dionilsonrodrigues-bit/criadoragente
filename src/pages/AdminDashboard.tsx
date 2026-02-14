@@ -41,6 +41,7 @@ const AdminDashboard = () => {
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [adminUser, setAdminUser] = useState<any>(null);
   const [createAdmin, setCreateAdmin] = useState(true);
+  const [phoneValue, setPhoneValue] = useState('');
   
   const [stats, setStats] = useState({
     totalCompanies: 0,
@@ -83,6 +84,26 @@ const AdminDashboard = () => {
     setIsLoading(false);
   };
 
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      let result = numbers;
+      if (numbers.length > 2) {
+        result = `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+      }
+      if (numbers.length > 7) {
+        result = `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+      }
+      return result;
+    }
+    return phoneValue;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setPhoneValue(formatted);
+  };
+
   const handleSaveCompany = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -91,7 +112,7 @@ const AdminDashboard = () => {
     const companyData: any = {
       name: formData.get('companyName') as string,
       atendi_id: formData.get('atendiId') as string,
-      phone: formData.get('phone') as string,
+      phone: phoneValue,
       description: formData.get('description') as string,
       plan_id: formData.get('planId') as string || null,
       status: formData.get('status') as string,
@@ -101,7 +122,6 @@ const AdminDashboard = () => {
 
     try {
       if (editingCompany) {
-        // Atualização via Edge Function para permitir editar Auth User
         const { error } = await supabase.functions.invoke('update-company-full', {
           body: { 
             company_id: editingCompany.id,
@@ -114,7 +134,6 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Empresa e Gestor atualizados!');
       } else {
-        // Criação (Novo)
         const adminData = {
           email: formData.get('adminEmail') as string,
           password: formData.get('adminPassword') as string,
@@ -159,6 +178,7 @@ const AdminDashboard = () => {
     setEditingCompany(null);
     setAdminUser(null);
     setCreateAdmin(true);
+    setPhoneValue('');
     setIsDialogOpen(true);
   };
 
@@ -167,6 +187,7 @@ const AdminDashboard = () => {
     const admin = company.profiles?.find((p: any) => p.role === 'company_admin');
     setAdminUser(admin || null);
     setCreateAdmin(false);
+    setPhoneValue(company.phone || '');
     setIsDialogOpen(true);
   };
 
@@ -311,7 +332,12 @@ const AdminDashboard = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Telefone</Label>
-                  <Input name="phone" defaultValue={editingCompany?.phone} placeholder="(00) 00000-0000" />
+                  <Input 
+                    name="phone" 
+                    value={phoneValue} 
+                    onChange={handlePhoneChange} 
+                    placeholder="(00) 00000-0000" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
@@ -386,7 +412,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Seção do Gestor (Sempre visível agora) */}
+              {/* Seção do Gestor */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
                 <div className="relative flex justify-center text-xs uppercase">
@@ -409,7 +435,6 @@ const AdminDashboard = () => {
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2"><Mail size={14}/> E-mail do Gestor</Label>
                       <Input name="adminEmail" type="email" defaultValue={adminUser?.email} placeholder="gestor@empresa.com" required />
-                      {editingCompany && <p className="text-[10px] text-amber-600 font-medium">Nota: Alterar o e-mail mudará o login do usuário.</p>}
                     </div>
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2"><Lock size={14}/> {editingCompany ? 'Nova Senha (Opcional)' : 'Senha Temporária'}</Label>
