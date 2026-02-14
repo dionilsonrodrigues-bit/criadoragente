@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -24,14 +24,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const isFetching = useRef(false);
 
-  const fetchProfile = async (userId: string): Promise<Profile | null> => {
-    if (isFetching.current) return null;
-    isFetching.current = true;
-    
-    console.log("[Auth] Buscando perfil...");
-
+  const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -39,17 +33,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) {
-        console.error("[Auth] Erro ao buscar perfil:", error.message);
-        return null;
-      }
-
+      if (error) throw error;
       return data as Profile;
     } catch (err) {
-      console.error("[Auth] Falha crítica na busca do perfil:", err);
+      console.error("[Auth] Erro ao carregar perfil:", err);
       return null;
-    } finally {
-      isFetching.current = false;
     }
   };
 
@@ -62,48 +50,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    let mounted = true;
-
-    const startApp = async () => {
-      const { data: { session: activeSession } } = await supabase.auth.getSession();
+    const initialize = async () => {
+      // 1. Pega a sessão inicial
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
       
-      if (!mounted) return;
-
-      if (activeSession) {
-        setSession(activeSession);
-        setUser(activeSession.user);
-        const p = await fetchProfile(activeSession.user.id);
-        if (mounted) setProfile(p);
+      if (initialSession) {
+        setSession(initialSession);
+        setUser(initialSession.user);
+        const p = await fetchProfile(initialSession.user.id);
+        setProfile(p);
       }
       
-      if (mounted) setLoading(false);
+      setLoading(false);
     };
 
-    startApp();
+    initialize();
 
+    // 2. Escuta mudanças na autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      if (!mounted) return;
-
       if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
         setProfile(null);
-        setLoading(false);
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (currentSession) {
           setSession(currentSession);
           setUser(currentSession.user);
           const p = await fetchProfile(currentSession.user.id);
-          if (mounted) setProfile(p);
+          setProfile(p);
         }
-        setLoading(false);
       }
+      setLoading(false);
     });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
