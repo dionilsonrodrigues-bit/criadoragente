@@ -93,32 +93,37 @@ serve(async (req) => {
       acceptTerms: true,
       email: email,
       password: password,
-      userName: name, // Nome do admin (estamos usando o nome da empresa aqui)
+      userName: name,
       profile: "admin"
     };
 
     const EXTERNAL_API_URL = 'https://back.atendipro.com.br/tenantApiStoreTenant'; 
-    const API_TOKEN = '0PMFACAB@F,f&hv]C+:9RvKSNC@1RAI*0OT63A78b8ksQ1UB3rXdn$vaSL3kfZ6';
+    // Buscando o token das variáveis de ambiente do Supabase
+    const API_TOKEN = Deno.env.get('ATENDIPRO_API_TOKEN');
     
-    try {
-      const externalResponse = await fetch(EXTERNAL_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': '*/*',
-          'Authorization': `Bearer ${API_TOKEN}`
-        },
-        body: JSON.stringify(externalPayload)
-      });
+    if (!API_TOKEN) {
+      console.warn(`[create-company-user] ATENDIPRO_API_TOKEN não configurado nas Secrets do Supabase.`);
+    } else {
+      try {
+        const externalResponse = await fetch(EXTERNAL_API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': '*/*',
+            'Authorization': `Bearer ${API_TOKEN}`
+          },
+          body: JSON.stringify(externalPayload)
+        });
 
-      const responseText = await externalResponse.text();
-      if (!externalResponse.ok) {
-        console.error(`[create-company-user] Erro na API externa (${externalResponse.status}): ${responseText}`);
-      } else {
-        console.log(`[create-company-user] Integração externa concluída: ${responseText}`);
+        const responseText = await externalResponse.text();
+        if (!externalResponse.ok) {
+          console.error(`[create-company-user] Erro na API externa (${externalResponse.status}): ${responseText}`);
+        } else {
+          console.log(`[create-company-user] Integração externa concluída: ${responseText}`);
+        }
+      } catch (extError) {
+        console.error(`[create-company-user] Falha na comunicação com a API:`, extError);
       }
-    } catch (extError) {
-      console.error(`[create-company-user] Falha na comunicação com a API:`, extError);
     }
 
     return new Response(JSON.stringify({ success: true, companyId: company.id }), {
