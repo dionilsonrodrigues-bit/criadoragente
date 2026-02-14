@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Calendar } from 'lucide-react';
+import { Building2, Globe, Key, Activity, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Calendar, Save, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,9 +37,8 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<any>(null);
   const [createAdmin, setCreateAdmin] = useState(true);
   
   const [stats, setStats] = useState({
@@ -55,7 +54,6 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setIsLoading(true);
     
-    // Buscar empresas e planos em paralelo
     const [companiesRes, plansRes] = await Promise.all([
       supabase.from('companies').select('*, agents(id, status)').order('created_at', { ascending: false }),
       supabase.from('plans').select('id, name').eq('status', 'active')
@@ -84,50 +82,84 @@ const AdminDashboard = () => {
     setIsLoading(false);
   };
 
-  const handleAddCompany = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSaveCompany = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
     
-    const companyData = {
+    const companyData: any = {
       name: formData.get('companyName') as string,
       atendi_id: formData.get('atendiId') as string,
       phone: formData.get('phone') as string,
       description: formData.get('description') as string,
-      plan_id: formData.get('planId') as string,
+      plan_id: formData.get('planId') as string || null,
       status: formData.get('status') as string,
-      due_day: formData.get('dueDay') as string,
+      due_day: formData.get('dueDay') ? parseInt(formData.get('dueDay') as string) : null,
       recurrence: formData.get('recurrence') as string,
     };
 
-    const adminData = {
-      email: formData.get('adminEmail') as string,
-      password: formData.get('adminPassword') as string,
-    };
-
     try {
-      if (createAdmin) {
-        // Chama a Edge Function para criar tudo junto
-        const { data, error } = await supabase.functions.invoke('create-company-user', {
-          body: { ...companyData, ...adminData }
-        });
+      if (editingCompany) {
+        // Atualização
+        const { error } = await supabase
+          .from('companies')
+          .update(companyData)
+          .eq('id', editingCompany.id);
 
         if (error) throw error;
-        toast.success('Empresa e Usuário criados com sucesso!');
+        toast.success('Empresa atualizada com sucesso!');
       } else {
-        // Apenas cria a empresa normalmente
-        const { error } = await supabase.from('companies').insert([companyData]);
-        if (error) throw error;
-        toast.success('Empresa cadastrada!');
+        // Criação (Novo)
+        const adminData = {
+          email: formData.get('adminEmail') as string,
+          password: formData.get('adminPassword') as string,
+        };
+
+        if (createAdmin) {
+          const { error } = await supabase.functions.invoke('create-company-user', {
+            body: { ...companyData, ...adminData }
+          });
+          if (error) throw error;
+          toast.success('Empresa e Usuário criados!');
+        } else {
+          const { error } = await supabase.from('companies').insert([companyData]);
+          if (error) throw error;
+          toast.success('Empresa cadastrada!');
+        }
       }
       
-      setIsAddDialogOpen(false);
+      setIsDialogOpen(false);
       fetchData();
     } catch (err: any) {
       toast.error(`Erro: ${err.message || 'Falha ao processar'}`);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDeleteCompany = async (id: string, name: string) => {
+    if (!confirm(`Deseja realmente excluir a empresa "${name}"? Esta ação não pode ser desfeita.`)) return;
+    
+    try {
+      const { error } = await supabase.from('companies').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Empresa excluída com sucesso');
+      fetchData();
+    } catch (err: any) {
+      toast.error(`Erro ao excluir: ${err.message}`);
+    }
+  };
+
+  const openNewDialog = () => {
+    setEditingCompany(null);
+    setCreateAdmin(true);
+    setIsDialogOpen(true);
+  };
+
+  const openEditDialog = (company: any) => {
+    setEditingCompany(company);
+    setCreateAdmin(false);
+    setIsDialogOpen(true);
   };
 
   const filteredCompanies = companies.filter(c => 
@@ -188,7 +220,7 @@ const AdminDashboard = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
+              <Button className="gap-2" onClick={openNewDialog}>
                 <Plus size={18} /> Nova Empresa
               </Button>
             </div>
@@ -197,6 +229,8 @@ const AdminDashboard = () => {
           <div className="space-y-3">
             {isLoading ? (
               <div className="h-40 flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>
+            ) : filteredCompanies.length === 0 ? (
+              <div className="text-center py-10 text-gray-400 italic">Nenhuma empresa encontrada.</div>
             ) : filteredCompanies.map((company) => (
               <Card key={company.id} className="hover:border-blue-200 transition-colors border-none shadow-sm ring-1 ring-black/5">
                 <CardContent className="py-4">
@@ -226,7 +260,7 @@ const AdminDashboard = () => {
                           <Button variant="outline" size="sm" className="gap-2">Ações <MoreVertical size={14} /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setSelectedCompany(company); setIsEditDialogOpen(true); }}>
+                          <DropdownMenuItem onClick={() => openEditDialog(company)}>
                             <Edit2 size={14} className="mr-2" /> Editar
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteCompany(company.id, company.name)}>
@@ -243,31 +277,33 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
-          <form onSubmit={handleAddCompany}>
+          <form onSubmit={handleSaveCompany}>
             <DialogHeader>
-              <DialogTitle>Cadastrar Nova Empresa</DialogTitle>
-              <DialogDescription>Crie uma instância e configure os dados contratuais.</DialogDescription>
+              <DialogTitle>{editingCompany ? 'Editar Empresa' : 'Cadastrar Nova Empresa'}</DialogTitle>
+              <DialogDescription>
+                {editingCompany ? `Atualizando dados da empresa ${editingCompany.name}` : 'Crie uma instância e configure os dados contratuais.'}
+              </DialogDescription>
             </DialogHeader>
             <div className="py-6 space-y-6">
               {/* Dados Básicos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nome da Empresa</Label>
-                  <Input name="companyName" placeholder="Ex: Acme Corp" required />
+                  <Input name="companyName" defaultValue={editingCompany?.name} placeholder="Ex: Acme Corp" required />
                 </div>
                 <div className="space-y-2">
                   <Label>ID AtendiPRO</Label>
-                  <Input name="atendiId" placeholder="Ex: 550" required />
+                  <Input name="atendiId" defaultValue={editingCompany?.atendi_id} placeholder="Ex: 550" required />
                 </div>
                 <div className="space-y-2">
                   <Label>Telefone</Label>
-                  <Input name="phone" placeholder="(00) 00000-0000" />
+                  <Input name="phone" defaultValue={editingCompany?.phone} placeholder="(00) 00000-0000" />
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
-                  <Select name="status" defaultValue="active">
+                  <Select name="status" defaultValue={editingCompany?.status || "active"}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -281,7 +317,7 @@ const AdminDashboard = () => {
 
               <div className="space-y-2">
                 <Label>Descrição</Label>
-                <Textarea name="description" placeholder="Observações sobre a empresa..." rows={2} />
+                <Textarea name="description" defaultValue={editingCompany?.description} placeholder="Observações sobre a empresa..." rows={2} />
               </div>
 
               {/* Dados do Plano */}
@@ -295,7 +331,7 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Plano</Label>
-                  <Select name="planId">
+                  <Select name="planId" defaultValue={editingCompany?.plan_id}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
@@ -308,7 +344,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Recorrência</Label>
-                  <Select name="recurrence" defaultValue="monthly">
+                  <Select name="recurrence" defaultValue={editingCompany?.recurrence || "monthly"}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -323,7 +359,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Dia de Vencimento</Label>
-                  <Select name="dueDay">
+                  <Select name="dueDay" defaultValue={editingCompany?.due_day?.toString()}>
                     <SelectTrigger>
                       <SelectValue placeholder="Dia" />
                     </SelectTrigger>
@@ -338,41 +374,45 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Acesso Admin */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-slate-500 font-bold">Acesso do Administrador</span>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-lg">
-                <Checkbox id="createAdmin" checked={createAdmin} onCheckedChange={(v) => setCreateAdmin(!!v)} />
-                <Label htmlFor="createAdmin" className="text-sm font-medium cursor-pointer">
-                  Criar conta de usuário para o gestor da empresa
-                </Label>
-              </div>
-
-              {createAdmin && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>E-mail do Administrador</Label>
-                      <Input name="adminEmail" type="email" placeholder="gestor@empresa.com" required={createAdmin} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Senha Temporária</Label>
-                      <Input name="adminPassword" type="password" placeholder="••••••••" required={createAdmin} />
+              {!editingCompany && (
+                <>
+                  {/* Acesso Admin (Apenas para novos cadastros) */}
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-slate-500 font-bold">Acesso do Administrador</span>
                     </div>
                   </div>
-                </div>
+
+                  <div className="flex items-center space-x-2 bg-slate-50 p-3 rounded-lg">
+                    <Checkbox id="createAdmin" checked={createAdmin} onCheckedChange={(v) => setCreateAdmin(!!v)} />
+                    <Label htmlFor="createAdmin" className="text-sm font-medium cursor-pointer">
+                      Criar conta de usuário para o gestor da empresa
+                    </Label>
+                  </div>
+
+                  {createAdmin && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>E-mail do Administrador</Label>
+                          <Input name="adminEmail" type="email" placeholder="gestor@empresa.com" required={createAdmin} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Senha Temporária</Label>
+                          <Input name="adminPassword" type="password" placeholder="••••••••" required={createAdmin} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSubmitting}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>Cancelar</Button>
               <Button type="submit" disabled={isSubmitting} className="gap-2">
-                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <UserPlus size={18} />}
-                Cadastrar Empresa
+                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : (editingCompany ? <Save size={18} /> : <UserPlus size={18} />)}
+                {editingCompany ? 'Salvar Alterações' : 'Cadastrar Empresa'}
               </Button>
             </DialogFooter>
           </form>
