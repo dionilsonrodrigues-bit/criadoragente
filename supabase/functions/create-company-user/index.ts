@@ -17,10 +17,11 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    const payload = await req.json()
     const { 
       name, atendi_id, email, password, phone, description, 
       plan_id, status, due_day, recurrence, logo_url 
-    } = await req.json()
+    } = payload
     
     console.log(`[create-company-user] Iniciando cadastro: ${name} / ${email}`);
 
@@ -97,32 +98,58 @@ serve(async (req) => {
       profile: "admin"
     };
 
-    const EXTERNAL_API_URL = 'https://back.atendipro.com.br/tenantApiStoreTenant'; 
-    // Buscando o token das variáveis de ambiente do Supabase
+    let externalApiResponse = null;
     const API_TOKEN = Deno.env.get('ATENDIPRO_API_TOKEN');
     
-    if (!API_TOKEN) {
-      console.warn(`[create-company-user] ATENDIPRO_API_TOKEN não configurado nas Secrets do Supabase.`);
-    } else {
+    if (API_TOKEN) {
       try {
-        const externalResponse = await fetch(EXTERNAL_API_URL, {
+        const response = await fetch('https://back.atendipro.com.br/tenantApiStoreTenant', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': '*/*',
             'Authorization': `Bearer ${API_TOKEN}`
           },
           body: JSON.stringify(externalPayload)
         });
-
-        const responseText = await externalResponse.text();
-        if (!externalResponse.ok) {
-          console.error(`[create-company-user] Erro na API externa (${externalResponse.status}): ${responseText}`);
-        } else {
-          console.log(`[create-company-user] Integração externa concluída: ${responseText}`);
-        }
+        
+        const text = await response.text();
+        externalApiResponse = {
+          status: response.status,
+          ok: response.ok,
+          data: text ? JSON.parse(text) : null
+        };
+        console.log(`[create-company-user] Retorno AtendiPRO:`, externalApiResponse);
       } catch (extError) {
-        console.error(`[create-company-user] Falha na comunicação com a API:`, extError);
+        console.error(`[create-company-user] Erro API AtendiPRO:`, extError.message);
+        externalApiResponse = { error: extError.message };
+      }
+    }
+
+    // 5. Disparar Webhook de Configuração (n8n/Custom)
+    const { data: settingData } = await supabaseClient
+      .from('settings')
+      .select('value')
+      .eq('key', 'webhook_account_creation')
+      .maybeSingle();
+
+    const webhookUrl = settingData?.value;
+
+    if (webhookUrl && webhookUrl.startsWith('http')) {
+      console.log(`[create-company-user] Disparando webhook de criação: ${webhookUrl}`);
+      try {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'company_created',
+            company_id: company.id,
+            form_data: payload,
+            external_api: externalApiResponse,
+            timestamp: new Date().toISOString()
+          })
+        });
+      } catch (webhookError) {
+        console.error(`[create-company-user] Falha ao disparar webhook:`, webhookError.message);
       }
     }
 
