@@ -67,20 +67,22 @@ serve(async (req) => {
 
     if (profileError) throw profileError
 
-    // 4. Integração com API AtendiPRO
-    console.log(`[create-company-user] Enviando dados para AtendiPRO...`);
+    // 4. Buscar dados do Plano e Integração com API AtendiPRO
+    console.log(`[create-company-user] Processando plano e API externa...`);
     
+    let planDetails = null;
     let maxUsers = 1;
     let maxConnections = 1;
     
     if (plan_id) {
       const { data: planData } = await supabaseClient
         .from('plans')
-        .select('user_limit, connection_limit')
+        .select('*')
         .eq('id', plan_id)
         .single();
         
       if (planData) {
+        planDetails = planData;
         maxUsers = planData.user_limit || 1;
         maxConnections = planData.connection_limit || 1;
       }
@@ -144,6 +146,7 @@ serve(async (req) => {
             event: 'company_created',
             company_id: company.id,
             form_data: payload,
+            plan: planDetails, // Incluindo detalhes completos do plano aqui
             external_api: externalApiResponse,
             timestamp: new Date().toISOString()
           })
