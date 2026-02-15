@@ -7,7 +7,8 @@ import {
   LogOut,
   Users,
   Building2,
-  Package
+  Package,
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
@@ -23,6 +24,7 @@ const Layout = () => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
     { icon: Building2, label: 'Empresas', path: '/admin/companies' },
     { icon: Package, label: 'Planos', path: '/admin/plans' },
+    { icon: Settings, label: 'Configurações', path: '/admin/settings' },
   ] : [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Bot, label: 'Meus Agentes', path: '/agents' },
@@ -94,7 +96,7 @@ const Layout = () => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto relative">
+      <main className="flex-1 overflow-y-auto relative text-left">
         <header className="h-16 bg-white border-b flex items-center justify-between px-8 sticky top-0 z-10">
           <h2 className="text-lg font-semibold text-gray-800">
             {menuItems.find(item => item.path === location.pathname)?.label || 'Detalhes'}

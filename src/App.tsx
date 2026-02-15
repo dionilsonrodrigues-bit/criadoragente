@@ -12,6 +12,7 @@ import Departments from "./pages/Departments";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminCompanies from "./pages/AdminCompanies";
 import Plans from "./pages/Plans";
+import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import SuperLogin from "./pages/SuperLogin";
 import Layout from "./components/Layout";
@@ -36,13 +37,12 @@ const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 
     return <Navigate to={role === 'super_admin' ? "/super-login" : "/login"} replace />;
   }
 
-  // Se tem sessão mas não carregou o perfil (erro de RLS ou recursão)
   if (!profile) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-50 p-4 text-center">
         <div className="bg-white p-8 rounded-xl shadow-lg max-w-sm w-full border border-red-100">
           <h2 className="text-xl font-bold text-red-600">Erro de Perfil</h2>
-          <p className="text-slate-500 mt-2">Não conseguimos carregar suas permissões. Isso geralmente acontece por erro de RLS no banco de dados.</p>
+          <p className="text-slate-500 mt-2">Não conseguimos carregar suas permissões.</p>
           <div className="mt-6 flex flex-col gap-2">
             <Button onClick={() => retryProfile()} variant="default" className="w-full bg-blue-600">
               Tentar Novamente
@@ -99,6 +99,7 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/companies" element={<AdminCompanies />} />
               <Route path="/admin/plans" element={<Plans />} />
+              <Route path="/admin/settings" element={<Settings />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
