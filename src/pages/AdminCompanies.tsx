@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Building2, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, AlertCircle, Calendar, CreditCard, Image as ImageIcon, Upload } from 'lucide-react';
+import { Building2, Search, Plus, Loader2, Trash2, Edit2, MoreVertical, UserPlus, Phone, Save, Mail, Lock, AlertCircle, Calendar, CreditCard, Image as ImageIcon, Upload, FileText } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,8 @@ const AdminCompanies = () => {
     
     const companyData: any = {
       name: formData.get('companyName') as string,
-      atendi_id: formData.get('atendiId') as string,
+      document: formData.get('document') as string,
+      atendi_id: formData.get('atendiId') as string || null,
       phone: phoneValue,
       description: formData.get('description') as string,
       plan_id: formData.get('planId') as string || null,
@@ -175,7 +176,6 @@ const AdminCompanies = () => {
 
     setIsLoading(true);
     try {
-      // Usando a nova Edge Function para exclusão completa (Auth + DB)
       const { error } = await supabase.functions.invoke('delete-company-full', {
         body: { company_id: id }
       });
@@ -209,7 +209,8 @@ const AdminCompanies = () => {
 
   const filteredCompanies = companies.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.atendi_id?.toLowerCase().includes(searchTerm.toLowerCase())
+    c.atendi_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.document?.includes(searchTerm)
   );
 
   return (
@@ -255,7 +256,8 @@ const AdminCompanies = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-slate-800">{company.name}</h4>
-                      <Badge variant="outline" className="text-[10px] bg-slate-50">ID: {company.atendi_id}</Badge>
+                      {company.document && <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">Doc: {company.document}</Badge>}
+                      {company.atendi_id && <Badge variant="outline" className="text-[10px] bg-slate-50">ID: {company.atendi_id}</Badge>}
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                       <span className="flex items-center gap-1">
@@ -362,14 +364,18 @@ const AdminCompanies = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Nome da Empresa</Label>
                   <Input name="companyName" defaultValue={editingCompany?.name} placeholder="Ex: Acme Corp" required />
                 </div>
                 <div className="space-y-2">
+                  <Label>CPF / CNPJ</Label>
+                  <Input name="document" defaultValue={editingCompany?.document} placeholder="Somente números" required />
+                </div>
+                <div className="space-y-2">
                   <Label>ID AtendiPRO (Instância)</Label>
-                  <Input name="atendiId" defaultValue={editingCompany?.atendi_id} placeholder="Ex: 550" required />
+                  <Input name="atendiId" defaultValue={editingCompany?.atendi_id} placeholder="Ex: 550" />
                 </div>
               </div>
 

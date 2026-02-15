@@ -19,7 +19,7 @@ serve(async (req) => {
 
     const payload = await req.json()
     const { 
-      name, atendi_id, email, password, phone, description, 
+      name, atendi_id, document, email, password, phone, description, 
       plan_id, status, due_day, recurrence, logo_url 
     } = payload
     
@@ -31,6 +31,7 @@ serve(async (req) => {
       .insert([{ 
         name, 
         atendi_id,
+        document,
         phone,
         description,
         plan_id: plan_id || null,
@@ -120,14 +121,13 @@ serve(async (req) => {
           ok: response.ok,
           data: text ? JSON.parse(text) : null
         };
-        console.log(`[create-company-user] Retorno AtendiPRO:`, externalApiResponse);
       } catch (extError) {
         console.error(`[create-company-user] Erro API AtendiPRO:`, extError.message);
         externalApiResponse = { error: extError.message };
       }
     }
 
-    // 5. Disparar Webhook de Configuração (n8n/Custom)
+    // 5. Disparar Webhook de Configuração
     const { data: settingData } = await supabaseClient
       .from('settings')
       .select('value')
@@ -137,7 +137,6 @@ serve(async (req) => {
     const webhookUrl = settingData?.value;
 
     if (webhookUrl && webhookUrl.startsWith('http')) {
-      console.log(`[create-company-user] Disparando webhook de criação: ${webhookUrl}`);
       try {
         await fetch(webhookUrl, {
           method: 'POST',
@@ -146,7 +145,7 @@ serve(async (req) => {
             event: 'company_created',
             company_id: company.id,
             form_data: payload,
-            plan: planDetails, // Incluindo detalhes completos do plano aqui
+            plan: planDetails,
             external_api: externalApiResponse,
             timestamp: new Date().toISOString()
           })

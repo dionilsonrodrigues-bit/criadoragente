@@ -18,7 +18,7 @@ serve(async (req) => {
     )
 
     const { 
-      company_id, name, atendi_id, phone, description, plan_id, status, due_day, recurrence,
+      company_id, name, document, atendi_id, phone, description, plan_id, status, due_day, recurrence,
       admin_email, admin_password, logo_url 
     } = await req.json()
 
@@ -28,7 +28,7 @@ serve(async (req) => {
     const { error: companyError } = await supabaseClient
       .from('companies')
       .update({ 
-        name, atendi_id, phone, description, plan_id, status, 
+        name, document, atendi_id, phone, description, plan_id, status, 
         due_day: parseInt(due_day), recurrence, logo_url: logo_url || null
       })
       .eq('id', company_id);
