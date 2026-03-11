@@ -95,15 +95,21 @@ const Layout = () => {
 
         <div className="p-4 border-t border-slate-900">
           <div className="flex items-center gap-3 px-3 py-2 text-slate-400">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white uppercase bg-blue-600 shrink-0">
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white uppercase shrink-0",
+              isSuperAdmin ? "bg-amber-500" : "bg-blue-600"
+            )}>
               {user?.email?.charAt(0) ?? 'U'}
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-medium text-white truncate">
                 {user?.email?.split('@')[0]}
               </p>
-              <p className="text-[10px] truncate text-slate-500 uppercase font-bold">
-                {isSuperAdmin ? 'Super Admin' : 'Administrador'}
+              <p className={cn(
+                "text-[10px] truncate uppercase font-bold",
+                isSuperAdmin ? "text-amber-500" : "text-slate-500"
+              )}>
+                {isSuperAdmin ? 'Super Administrador' : 'Admin da Empresa'}
               </p>
             </div>
           </div>

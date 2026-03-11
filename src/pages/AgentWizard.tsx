@@ -11,11 +11,9 @@ import {
   BrainCircuit,
   ShieldAlert,
   Target,
-  Copy,
   Loader2,
   Edit3,
-  List,
-  X
+  List
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,13 +26,12 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { generateFinalPrompt, AgentData } from '@/lib/prompt-engine';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 const steps = [
   { id: 1, title: 'Identificação', icon: Info },
@@ -63,13 +60,12 @@ const DEFAULT_TRANSFER_TEMPLATE = `- Quando o cliente solicitar falar com um ate
 const AgentWizard = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [departments, setDepartments] = useState<any[]>([]);
 
   const [isCustomObjective, setIsCustomObjective] = useState(false);
-  const [isCustomType, setIsCustomType] = useState(false);
-  const [isCustomTone, setIsCustomTone] = useState(false);
   
   const [formData, setFormData] = useState<AgentData>({
     name: '',
@@ -94,10 +90,14 @@ const AgentWizard = () => {
       setIsLoading(false);
     };
     initData();
-  }, [id]);
+  }, [id, profile]);
 
   const fetchDepartments = async () => {
-    const { data } = await supabase.from('departments').select('id, name');
+    const query = supabase.from('departments').select('id, name');
+    if (profile?.company_id) {
+      query.eq('company_id', profile.company_id);
+    }
+    const { data } = await query;
     setDepartments(data || []);
   };
 
@@ -140,7 +140,7 @@ const AgentWizard = () => {
       return;
     }
 
-    const payload = {
+    const payload: any = {
       name: formData.name,
       objective: formData.objective,
       type: formData.type,
@@ -153,6 +153,11 @@ const AgentWizard = () => {
       transfer_dept_id: formData.transferDept || null,
       updated_at: new Date().toISOString()
     };
+
+    // Vincular à empresa do usuário logado
+    if (profile?.company_id) {
+      payload.company_id = profile.company_id;
+    }
 
     let error;
     if (id) {
