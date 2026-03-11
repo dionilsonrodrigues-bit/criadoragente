@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Copy, ExternalLink, Loader2, Activity, Globe } from 'lucide-react';
+import { Bot, Copy, ExternalLink, Loader2, Activity, Globe, ShieldAlert } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
@@ -7,13 +7,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 
 const Index = () => {
-  const { profile } = useAuth();
+  const { profile, user, retryProfile } = useAuth();
   const [stats, setStats] = useState({
     totalAgents: 0,
     activeAgents: 0,
     totalDepartments: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isPromoting, setIsPromoting] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -23,8 +24,6 @@ const Index = () => {
 
   const fetchStats = async () => {
     setIsLoading(true);
-    
-    // Filtramos apenas dados da empresa do usuário (se houver uma vinculada)
     const companyQuery = profile?.company_id ? { company_id: profile.company_id } : {};
     
     const [agentsRes, deptsRes] = await Promise.all([
@@ -40,13 +39,48 @@ const Index = () => {
     setIsLoading(false);
   };
 
+  const handlePromoteMe = async () => {
+    if (!user) return;
+    setIsPromoting(true);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: 'super_admin' })
+      .eq('id', user.id);
+
+    if (error) {
+      toast.error("Erro ao promover: " + error.message);
+    } else {
+      toast.success("Agora você é Super Admin! Atualizando...");
+      await retryProfile();
+      // Opcional: recarregar a página para garantir que o layout atualize
+      window.location.reload();
+    }
+    setIsPromoting(false);
+  };
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-        <p className="text-gray-500 mt-1">
-          {profile?.company_id ? 'Gerencie os agentes da sua empresa.' : 'Bem-vindo ao AtendiPRO IA.'}
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
+          <p className="text-gray-500 mt-1">
+            {profile?.company_id ? 'Gerencie os agentes da sua empresa.' : 'Bem-vindo ao AtendiPRO IA.'}
+          </p>
+        </div>
+
+        {/* Botão Temporário de Promoção */}
+        {profile?.role !== 'super_admin' && (
+          <Button 
+            variant="destructive" 
+            className="gap-2 animate-pulse" 
+            onClick={handlePromoteMe}
+            disabled={isPromoting}
+          >
+            {isPromoting ? <Loader2 className="animate-spin" size={16} /> : <ShieldAlert size={16} />}
+            Me tornar Super Admin
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
