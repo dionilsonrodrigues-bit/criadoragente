@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Copy, ExternalLink, Loader2, Activity, Globe, MessageSquare } from 'lucide-react';
+import { Bot, Copy, ExternalLink, Loader2, Activity, Globe } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
@@ -36,7 +36,7 @@ const Index = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Visão geral da sua operação de IA.</p>
+        <p className="text-gray-500 mt-1">Bem-vindo ao seu criador de agentes de IA.</p>
       </div>
 
       {isLoading ? (
@@ -81,30 +81,28 @@ const Index = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6">
-        <Card className="bg-slate-50 border-dashed border-2">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ExternalLink size={18} className="text-blue-600" />
-              Integração com n8n
-            </CardTitle>
-            <CardDescription>
-              Use o webhook abaixo no seu fluxo do n8n para consumir o agente ativo da sua empresa.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center gap-4">
-            <div className="flex-1 bg-white p-3 rounded-md border font-mono text-sm text-gray-600 flex justify-between items-center overflow-x-auto">
-              <span className="whitespace-nowrap">https://n8n.atendipro.com.br/webhook/triagem-zpro/12345</span>
-              <Button variant="ghost" size="icon" className="h-8 w-8 ml-4 shrink-0" onClick={() => {
-                navigator.clipboard.writeText('https://n8n.atendipro.com.br/webhook/triagem-zpro/12345');
-                toast.success('URL copiada para a área de transferência!');
-              }}>
-                <Copy size={14} />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="bg-slate-50 border-dashed border-2">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ExternalLink size={18} className="text-blue-600" />
+            Integração Webhook
+          </CardTitle>
+          <CardDescription>
+            Use este endpoint para enviar mensagens ao seu agente ativo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex-1 bg-white p-3 rounded-md border font-mono text-sm text-gray-600 flex justify-between items-center overflow-x-auto">
+            <span className="whitespace-nowrap">https://api.atendipro.com.br/v1/agent/active</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8 ml-4 shrink-0" onClick={() => {
+              navigator.clipboard.writeText('https://api.atendipro.com.br/v1/agent/active');
+              toast.success('URL copiada!');
+            }}>
+              <Copy size={14} />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

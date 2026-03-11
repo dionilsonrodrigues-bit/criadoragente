@@ -3,12 +3,8 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Bot, 
-  ShieldCheck, 
   LogOut,
-  Users,
-  Building2,
-  Package,
-  Settings
+  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
@@ -16,16 +12,9 @@ import { useAuth } from './AuthProvider';
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
 
-  const isSuper = profile?.role === 'super_admin';
-
-  const menuItems = isSuper ? [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
-    { icon: Building2, label: 'Empresas', path: '/admin/companies' },
-    { icon: Package, label: 'Planos', path: '/admin/plans' },
-    { icon: Settings, label: 'Configurações', path: '/admin/settings' },
-  ] : [
+  const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: Bot, label: 'Meus Agentes', path: '/agents' },
     { icon: Users, label: 'Departamentos', path: '/departments' },
@@ -33,7 +22,7 @@ const Layout = () => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate(isSuper ? '/super-login' : '/login');
+    navigate('/login');
   };
 
   return (
@@ -41,12 +30,9 @@ const Layout = () => {
       <aside className="w-64 bg-slate-900 text-white flex flex-col">
         <div className="p-6 border-b border-slate-800">
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <Bot className={isSuper ? "text-red-400" : "text-blue-400"} />
-            AtendiPRO <span className={cn(
-              "text-[10px] px-1.5 py-0.5 rounded uppercase font-black",
-              isSuper ? "bg-red-600" : "bg-blue-600"
-            )}>
-              {isSuper ? 'MASTER' : 'IA'}
+            <Bot className="text-blue-400" />
+            AtendiPRO <span className="text-[10px] px-1.5 py-0.5 rounded uppercase font-black bg-blue-600">
+              IA
             </span>
           </h1>
         </div>
@@ -59,7 +45,7 @@ const Layout = () => {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
                 location.pathname === item.path 
-                  ? (isSuper ? "bg-red-600 text-white" : "bg-blue-600 text-white")
+                  ? "bg-blue-600 text-white"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               )}
             >
@@ -71,10 +57,7 @@ const Layout = () => {
 
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center gap-3 px-3 py-2 text-slate-400">
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white uppercase",
-              isSuper ? "bg-red-600" : "bg-blue-600"
-            )}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white uppercase bg-blue-600">
               {user?.email?.charAt(0) ?? 'U'}
             </div>
             <div className="flex-1 overflow-hidden">
@@ -82,7 +65,7 @@ const Layout = () => {
                 {user?.email?.split('@')[0]}
               </p>
               <p className="text-xs truncate text-slate-500">
-                {isSuper ? 'Super Administrador' : 'Gestor de Empresa'}
+                Usuário
               </p>
             </div>
           </div>
@@ -101,12 +84,6 @@ const Layout = () => {
           <h2 className="text-lg font-semibold text-gray-800">
             {menuItems.find(item => item.path === location.pathname)?.label || 'Detalhes'}
           </h2>
-          {profile?.company_id && (
-             <div className="flex items-center gap-2 text-sm text-slate-500">
-               <Building2 size={16} />
-               Empresa vinculada
-             </div>
-          )}
         </header>
         <div className="p-8">
           <Outlet />

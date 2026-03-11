@@ -48,24 +48,17 @@ const steps = [
 
 const DEFAULT_BRAIN_TEMPLATE = `# DIRETRIZES DE COMPORTAMENTO
 - Seja sempre cordial, empático e profissional.
-- Responda de forma objetiva, evitando textos excessivamente longos a menos que solicitado.
-- Se não souber uma resposta, nunca invente. Informe que irá consultar o setor responsável.
+- Responda de forma objetiva, evitando textos excessivamente longos.
+- Se não souber uma resposta, nunca invente.
 
 # ESTRATÉGIA DE ATENDIMENTO
-1. Saudação: Inicie sempre com uma recepção calorosa e mencione seu nome.
-2. Escuta Ativa: Demonstre que entendeu o problema ou dúvida do cliente.
-3. Resolução: Forneça a informação baseada estritamente no seu "Conhecimento do Negócio".
-4. Fechamento: Pergunte se há algo mais em que possa ajudar antes de encerrar.
+1. Saudação: Inicie sempre com uma recepção calorosa.
+2. Escuta Ativa: Demonstre que entendeu o problema.
+3. Resolução: Forneça a informação baseada no contexto.
+4. Fechamento: Pergunte se há algo mais em que possa ajudar.`;
 
-# RESTRIÇÕES E SEGURANÇA
-- Nunca mencione nomes de empresas concorrentes.
-- Nunca forneça opiniões pessoais sobre política, religião ou temas sensíveis.
-- Não prometa descontos ou prazos que não estejam validados no seu contexto.`;
-
-const DEFAULT_TRANSFER_TEMPLATE = `- Quando o cliente solicitar expressamente falar com um atendente humano.
-- Quando o cliente demonstrar irritação, impaciência ou usar linguagem inadequada.
-- Quando o cliente tiver uma dúvida técnica complexa que não consta no seu conhecimento.
-- Quando o assunto envolver negociações financeiras, cancelamentos ou reclamações críticas.`;
+const DEFAULT_TRANSFER_TEMPLATE = `- Quando o cliente solicitar falar com um atendente humano.
+- Quando o assunto envolver negociações financeiras complexas.`;
 
 const AgentWizard = () => {
   const { id } = useParams();
@@ -73,7 +66,6 @@ const AgentWizard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [companyId, setCompanyId] = useState<string | null>(null);
 
   const [isCustomObjective, setIsCustomObjective] = useState(false);
   const [isCustomType, setIsCustomType] = useState(false);
@@ -96,7 +88,6 @@ const AgentWizard = () => {
     const initData = async () => {
       setIsLoading(true);
       await fetchDepartments();
-      await fetchInitialCompany();
       if (id) {
         await fetchAgentData();
       }
@@ -104,13 +95,6 @@ const AgentWizard = () => {
     };
     initData();
   }, [id]);
-
-  const fetchInitialCompany = async () => {
-    const { data } = await supabase.from('companies').select('id').limit(1).single();
-    if (data) {
-      setCompanyId(data.id);
-    }
-  };
 
   const fetchDepartments = async () => {
     const { data } = await supabase.from('departments').select('id, name');
@@ -126,9 +110,8 @@ const AgentWizard = () => {
 
     if (error) {
       toast.error('Erro ao carregar dados do agente');
-      navigate('/');
+      navigate('/agents');
     } else {
-      // Mapeamento correto de snake_case para camelCase
       setFormData({
         name: data.name,
         objective: data.objective || '',
@@ -141,16 +124,6 @@ const AgentWizard = () => {
         transferRule: data.transfer_rule || DEFAULT_TRANSFER_TEMPLATE,
         transferDept: data.transfer_dept_id || '',
       });
-
-      const defaultObjectives = ['vender', 'qualificar', 'suporte', 'triagem'];
-      const defaultTypes = ['sdr', 'suporte', 'recepcionista', 'pos-venda'];
-      const defaultTones = ['profissional', 'amigável', 'direto', 'persuasivo'];
-
-      if (data.objective && !defaultObjectives.includes(data.objective)) setIsCustomObjective(true);
-      if (data.type && !defaultTypes.includes(data.type)) setIsCustomType(true);
-      if (data.tone && !defaultTones.includes(data.tone)) setIsCustomTone(true);
-      
-      if (data.company_id) setCompanyId(data.company_id);
     }
   };
 
@@ -178,7 +151,6 @@ const AgentWizard = () => {
       business_context: formData.businessContext,
       transfer_rule: formData.transferRule,
       transfer_dept_id: formData.transferDept || null,
-      company_id: companyId,
       updated_at: new Date().toISOString()
     };
 
@@ -197,11 +169,10 @@ const AgentWizard = () => {
     }
 
     if (error) {
-      console.error("Erro ao salvar:", error);
       toast.error(`Erro ao salvar agente: ${error.message}`);
     } else {
       toast.success(id ? 'Agente atualizado!' : 'Agente criado!');
-      navigate('/');
+      navigate('/agents');
     }
     setIsLoading(false);
   };
@@ -265,42 +236,6 @@ const AgentWizard = () => {
                   </Select>
                 )}
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>Tipo de Agente</Label>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-[10px] h-6 px-2 gap-1"
-                    onClick={() => {
-                      setIsCustomType(!isCustomType);
-                      if (!isCustomType) setFormData({...formData, type: ''});
-                    }}
-                  >
-                    {isCustomType ? <List size={12} /> : <Edit3 size={12} />}
-                    {isCustomType ? 'Ver Lista' : 'Personalizar'}
-                  </Button>
-                </div>
-                {isCustomType ? (
-                  <Input 
-                    placeholder="Digite o cargo personalizado..."
-                    value={formData.type}
-                    onChange={(e) => setFormData({...formData, type: e.target.value})}
-                  />
-                ) : (
-                  <Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o cargo do agente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sdr">SDR / Pré-vendas</SelectItem>
-                      <SelectItem value="suporte">Analista de Suporte</SelectItem>
-                      <SelectItem value="recepcionista">Recepcionista Virtual</SelectItem>
-                      <SelectItem value="pos-venda">Pós-venda</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
             </div>
           </div>
         );
@@ -309,40 +244,17 @@ const AgentWizard = () => {
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>Tom de Voz</Label>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-[10px] h-6 px-2 gap-1"
-                    onClick={() => {
-                      setIsCustomTone(!isCustomTone);
-                      if (!isCustomTone) setFormData({...formData, tone: 'amigável'});
-                    }}
-                  >
-                    {isCustomTone ? <List size={12} /> : <Edit3 size={12} />}
-                    {isCustomTone ? 'Ver Lista' : 'Personalizar'}
-                  </Button>
-                </div>
-                {isCustomTone ? (
-                  <Input 
-                    placeholder="Digite o tom personalizado..."
-                    value={formData.tone}
-                    onChange={(e) => setFormData({...formData, tone: e.target.value})}
-                  />
-                ) : (
-                  <Select value={formData.tone} onValueChange={(v) => setFormData({...formData, tone: v})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="profissional">Profissional e formal</SelectItem>
-                      <SelectItem value="amigável">Amigável e acolhedor</SelectItem>
-                      <SelectItem value="direto">Direto e objetivo</SelectItem>
-                      <SelectItem value="persuasivo">Persuasivo e focado em vendas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
+                <Label>Tom de Voz</Label>
+                <Select value={formData.tone} onValueChange={(v) => setFormData({...formData, tone: v})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="profissional">Profissional e formal</SelectItem>
+                    <SelectItem value="amigável">Amigável e acolhedor</SelectItem>
+                    <SelectItem value="direto">Direto e objetivo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>Tamanho das Respostas</Label>
@@ -358,34 +270,13 @@ const AgentWizard = () => {
                 </Select>
               </div>
             </div>
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-              <div className="space-y-0.5">
-                <Label className="text-base">Permitir Emojis</Label>
-                <p className="text-sm text-gray-500 italic">O agente usará ícones para tornar a conversa mais leve.</p>
-              </div>
-              <Switch 
-                checked={formData.allowEmoji} 
-                onCheckedChange={(v) => setFormData({...formData, allowEmoji: v})} 
-              />
-            </div>
           </div>
         );
       case 4:
         return (
           <div className="space-y-4 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-              <Label>Como esse agente deve agir? (Cérebro)</Label>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-[10px] h-7"
-                onClick={() => setFormData({...formData, basePrompt: DEFAULT_BRAIN_TEMPLATE})}
-              >
-                Resetar para Modelo
-              </Button>
-            </div>
+            <Label>Como esse agente deve agir? (Cérebro)</Label>
             <Textarea 
-              placeholder="Descreva as regras comportamentais, prioridades e a estratégia de conversa..." 
               className="min-h-[250px] font-mono text-sm leading-relaxed"
               value={formData.basePrompt}
               onChange={(e) => setFormData({...formData, basePrompt: e.target.value})}
@@ -395,9 +286,9 @@ const AgentWizard = () => {
       case 5:
         return (
           <div className="space-y-4 animate-in fade-in duration-500">
-            <Label>Conhecimento do Negócio (FAQ, Produtos, Preços)</Label>
+            <Label>Conhecimento do Negócio</Label>
             <Textarea 
-              placeholder="Cole aqui informações sobre sua empresa, detalhes de produtos, políticas e perguntas frequentes..." 
+              placeholder="Cole aqui informações sobre sua empresa..." 
               className="min-h-[200px]"
               value={formData.businessContext}
               onChange={(e) => setFormData({...formData, businessContext: e.target.value})}
@@ -408,19 +299,8 @@ const AgentWizard = () => {
         return (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label>Quando transferir para um humano?</Label>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="text-[10px] h-7"
-                  onClick={() => setFormData({...formData, transferRule: DEFAULT_TRANSFER_TEMPLATE})}
-                >
-                  Resetar para Modelo
-                </Button>
-              </div>
+              <Label>Quando transferir para um humano?</Label>
               <Textarea 
-                placeholder="Ex: Quando o cliente pedir falar com atendente ou estiver irritado..." 
                 className="min-h-[150px] font-mono text-sm leading-relaxed"
                 value={formData.transferRule}
                 onChange={(e) => setFormData({...formData, transferRule: e.target.value})}
@@ -436,7 +316,6 @@ const AgentWizard = () => {
                   {departments.map(dept => (
                     <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
                   ))}
-                  {departments.length === 0 && <SelectItem value="none" disabled>Nenhum setor cadastrado</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
@@ -445,35 +324,8 @@ const AgentWizard = () => {
       case 7:
         return (
           <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-              <div className="bg-white p-3 border rounded">
-                <span className="text-gray-500 block text-xs uppercase font-bold">Nome do Agente</span>
-                <span className="font-semibold">{formData.name || 'Não definido'}</span>
-              </div>
-              <div className="bg-white p-3 border rounded">
-                <span className="text-gray-500 block text-xs uppercase font-bold">Objetivo</span>
-                <span className="font-semibold capitalize">{formData.objective || 'Não definido'}</span>
-              </div>
-            </div>
-            
-            <div className="space-y-2 relative">
-              <div className="flex justify-between items-center">
-                <Label className="text-blue-600 font-bold uppercase tracking-wider text-xs">Prompt Final Gerado</Label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 gap-1 text-xs"
-                  onClick={() => {
-                    navigator.clipboard.writeText(finalPrompt);
-                    toast.success('Prompt copiado!');
-                  }}
-                >
-                  <Copy size={14} /> Copiar Prompt
-                </Button>
-              </div>
-              <div className="bg-slate-900 text-slate-300 p-4 rounded-lg font-mono text-xs overflow-y-auto max-h-60 leading-relaxed">
-                <pre className="whitespace-pre-wrap">{finalPrompt}</pre>
-              </div>
+            <div className="bg-slate-900 text-slate-300 p-4 rounded-lg font-mono text-xs overflow-y-auto max-h-60 leading-relaxed">
+              <pre className="whitespace-pre-wrap">{finalPrompt}</pre>
             </div>
           </div>
         );
@@ -496,12 +348,6 @@ const AgentWizard = () => {
             )}>
               {currentStep > step.id ? <Check size={20} /> : <step.icon size={20} />}
             </div>
-            <span className={cn(
-              "text-[10px] font-bold uppercase tracking-tight hidden md:block",
-              currentStep === step.id ? "text-blue-600" : "text-gray-400"
-            )}>
-              {step.title}
-            </span>
           </div>
         ))}
       </div>
@@ -510,58 +356,23 @@ const AgentWizard = () => {
         <div className="h-2 bg-gradient-to-r from-blue-600 to-indigo-600" />
         <CardContent className="pt-8 px-10">
           <div className="min-h-[420px]">
-            <div className="mb-8">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                    <span className="bg-slate-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center text-sm">{currentStep}</span>
-                    {steps[currentStep - 1].title}
-                  </h3>
-                  <p className="text-gray-500 text-sm mt-1">Configure as definições fundamentais do agente.</p>
-                </div>
-                {id && (
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Editando Agente #{id.substring(0, 8)}</Badge>
-                )}
-              </div>
-            </div>
+            <h3 className="text-2xl font-black text-slate-800 mb-8">{steps[currentStep - 1].title}</h3>
             {renderStepContent()}
           </div>
 
           <div className="flex justify-between items-center mt-12 py-6 border-t border-slate-100">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                onClick={prevStep} 
-                disabled={currentStep === 1 || isLoading}
-                className="gap-2 text-gray-500 hover:text-slate-900"
-              >
-                <ChevronLeft size={18} />
-                Voltar
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/')}
-                disabled={isLoading}
-                className="gap-2 text-gray-400 border-gray-200 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all"
-              >
-                <X size={16} />
-                Cancelar
-              </Button>
-            </div>
+            <Button variant="ghost" onClick={prevStep} disabled={currentStep === 1 || isLoading}>
+              <ChevronLeft size={18} className="mr-2" /> Voltar
+            </Button>
 
             {currentStep === steps.length ? (
-              <Button 
-                onClick={handleSave} 
-                disabled={isLoading}
-                className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 px-8"
-              >
-                {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                {id ? 'Atualizar Agente' : 'Salvar Agente'}
+              <Button onClick={handleSave} disabled={isLoading} className="bg-blue-600 px-8">
+                {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} className="mr-2" />}
+                Salvar Agente
               </Button>
             ) : (
-              <Button onClick={nextStep} className="gap-2 bg-slate-900 hover:bg-slate-800 px-8">
-                Continuar
-                <ChevronRight size={18} />
+              <Button onClick={nextStep} className="bg-slate-900 px-8">
+                Continuar <ChevronRight size={18} className="ml-2" />
               </Button>
             )}
           </div>
