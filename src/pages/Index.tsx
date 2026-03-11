@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 const Index = () => {
+  const { profile } = useAuth();
   const [stats, setStats] = useState({
     totalAgents: 0,
     activeAgents: 0,
@@ -14,14 +16,20 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (profile) {
+      fetchStats();
+    }
+  }, [profile]);
 
   const fetchStats = async () => {
     setIsLoading(true);
+    
+    // Filtramos apenas dados da empresa do usuário (se houver uma vinculada)
+    const companyQuery = profile?.company_id ? { company_id: profile.company_id } : {};
+    
     const [agentsRes, deptsRes] = await Promise.all([
-      supabase.from('agents').select('status'),
-      supabase.from('departments').select('id', { count: 'exact' })
+      supabase.from('agents').select('status').match(companyQuery),
+      supabase.from('departments').select('id', { count: 'exact' }).match(companyQuery)
     ]);
 
     setStats({
@@ -36,7 +44,9 @@ const Index = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Bem-vindo ao seu criador de agentes de IA.</p>
+        <p className="text-gray-500 mt-1">
+          {profile?.company_id ? 'Gerencie os agentes da sua empresa.' : 'Bem-vindo ao AtendiPRO IA.'}
+        </p>
       </div>
 
       {isLoading ? (
@@ -45,56 +55,62 @@ const Index = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
+          <Card className="border-none shadow-sm ring-1 ring-black/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Total de Agentes</p>
-                  <h3 className="text-2xl font-bold mt-1">{stats.totalAgents}</h3>
+                  <h3 className="text-2xl font-bold mt-1 text-slate-900">{stats.totalAgents}</h3>
                 </div>
-                <Bot className="text-blue-600" size={24} />
+                <div className="bg-blue-50 p-2 rounded-lg">
+                  <Bot className="text-blue-600" size={24} />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm ring-1 ring-black/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Agentes Ativos</p>
-                  <h3 className="text-2xl font-bold mt-1">{stats.activeAgents}</h3>
+                  <h3 className="text-2xl font-bold mt-1 text-slate-900">{stats.activeAgents}</h3>
                 </div>
-                <Activity className="text-green-600" size={24} />
+                <div className="bg-green-50 p-2 rounded-lg">
+                  <Activity className="text-green-600" size={24} />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-none shadow-sm ring-1 ring-black/5">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Departamentos</p>
-                  <h3 className="text-2xl font-bold mt-1">{stats.totalDepartments}</h3>
+                  <h3 className="text-2xl font-bold mt-1 text-slate-900">{stats.totalDepartments}</h3>
                 </div>
-                <Globe className="text-purple-600" size={24} />
+                <div className="bg-purple-50 p-2 rounded-lg">
+                  <Globe className="text-purple-600" size={24} />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <Card className="bg-slate-50 border-dashed border-2">
+      <Card className="bg-white border-dashed border-2">
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2 text-slate-900">
             <ExternalLink size={18} className="text-blue-600" />
             Integração Webhook
           </CardTitle>
           <CardDescription>
-            Use este endpoint para enviar mensagens ao seu agente ativo.
+            Envie as mensagens do chat para este endpoint para processar com a IA.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex-1 bg-white p-3 rounded-md border font-mono text-sm text-gray-600 flex justify-between items-center overflow-x-auto">
-            <span className="whitespace-nowrap">https://api.atendipro.com.br/v1/agent/active</span>
-            <Button variant="ghost" size="icon" className="h-8 w-8 ml-4 shrink-0" onClick={() => {
+          <div className="flex-1 bg-slate-50 p-4 rounded-lg border font-mono text-sm text-slate-600 flex justify-between items-center overflow-x-auto">
+            <span className="whitespace-nowrap select-all">https://api.atendipro.com.br/v1/agent/active</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8 ml-4 shrink-0 hover:bg-white" onClick={() => {
               navigator.clipboard.writeText('https://api.atendipro.com.br/v1/agent/active');
               toast.success('URL copiada!');
             }}>

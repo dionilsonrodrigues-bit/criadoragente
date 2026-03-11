@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import AgentWizard from "./pages/AgentWizard";
 import AgentsList from "./pages/AgentsList";
 import Departments from "./pages/Departments";
+import AdminCompanies from "./pages/AdminCompanies";
 import Login from "./pages/Login";
 import Layout from "./components/Layout";
 
@@ -53,6 +54,9 @@ const App = () => (
               <Route path="/agents/new" element={<AgentWizard />} />
               <Route path="/agents/edit/:id" element={<AgentWizard />} />
               <Route path="/departments" element={<Departments />} />
+              
+              {/* Rotas Administrativas */}
+              <Route path="/admin/companies" element={<AdminCompanies />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

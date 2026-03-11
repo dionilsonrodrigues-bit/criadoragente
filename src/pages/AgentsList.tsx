@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,19 +16,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const AgentsList = () => {
+  const { profile } = useAuth();
   const [agents, setAgents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchAgents();
-  }, []);
+    if (profile) {
+      fetchAgents();
+    }
+  }, [profile]);
 
   const fetchAgents = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
+    const query = supabase
       .from('agents')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (profile?.company_id) {
+      query.eq('company_id', profile.company_id);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast.error('Erro ao buscar agentes');
@@ -40,11 +50,18 @@ const AgentsList = () => {
   const toggleAgent = async (id: string, currentStatus: string, name: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     
+    // Desativa outros se estiver ativando este (apenas dentro da mesma empresa)
     if (newStatus === 'active') {
-      await supabase
+      const updateQuery = supabase
         .from('agents')
         .update({ status: 'inactive' })
         .neq('id', id);
+      
+      if (profile?.company_id) {
+        updateQuery.eq('company_id', profile.company_id);
+      }
+      
+      await updateQuery;
     }
 
     const { error } = await supabase
@@ -78,15 +95,15 @@ const AgentsList = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center text-left">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Meus Agentes</h1>
-          <p className="text-gray-500 mt-1">Gerencie a inteligência artificial do seu atendimento.</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Meus Agentes</h1>
+          <p className="text-gray-500 mt-1">Configure a inteligência artificial do seu atendimento.</p>
         </div>
-        <Button asChild className="gap-2">
+        <Button asChild className="gap-2 bg-blue-600 hover:bg-blue-700">
           <Link to="/agents/new">
             <Plus size={18} />
-            Criar Novo Agente
+            Criar Agente
           </Link>
         </Button>
       </div>
@@ -96,16 +113,19 @@ const AgentsList = () => {
           <Loader2 className="animate-spin text-blue-600" size={40} />
         </div>
       ) : agents.length === 0 ? (
-        <Card className="p-12 text-center border-dashed">
-          <CardDescription>Você ainda não criou nenhum agente de IA.</CardDescription>
-          <Button asChild variant="outline" className="mt-4">
+        <Card className="p-12 text-center border-dashed bg-slate-50">
+          <CardDescription className="mb-4">Você ainda não criou nenhum agente de IA para esta empresa.</CardDescription>
+          <Button asChild variant="outline">
             <Link to="/agents/new">Criar meu primeiro agente</Link>
           </Button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.map((agent) => (
-            <Card key={agent.id} className={agent.status === 'active' ? "border-blue-500 shadow-md ring-1 ring-blue-500" : ""}>
+            <Card key={agent.id} className={cn(
+              "border-none shadow-sm ring-1 transition-all duration-300",
+              agent.status === 'active' ? "ring-blue-500 shadow-md shadow-blue-500/10" : "ring-slate-200"
+            )}>
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <Badge variant={agent.status === 'active' ? "default" : "outline"} className={agent.status === 'active' ? "bg-blue-600 hover:bg-blue-600" : ""}>
@@ -131,30 +151,28 @@ const AgentsList = () => {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <CardTitle className="mt-4 text-xl">{agent.name}</CardTitle>
-                <CardDescription className="truncate">Objetivo: {agent.objective || 'Não definido'}</CardDescription>
+                <CardTitle className="mt-4 text-xl font-bold text-slate-900">{agent.name}</CardTitle>
+                <CardDescription className="truncate text-slate-500">Objetivo: {agent.objective || 'Não definido'}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-4">
-                  <div className="flex justify-between items-center py-2 border-y border-gray-100">
-                    <span className="text-sm text-gray-500">Tipo</span>
-                    <span className="text-sm font-semibold uppercase">{agent.type || '-'}</span>
+                  <div className="flex justify-between items-center py-3 border-y border-slate-50 text-sm">
+                    <span className="text-slate-500">Tipo</span>
+                    <span className="font-semibold text-slate-900 uppercase tracking-tighter">{agent.type || '-'}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Power size={14} className={agent.status === 'active' ? "text-green-500" : "text-gray-400"} />
-                      <span className="text-sm font-medium">Status do Agente</span>
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Power size={14} className={agent.status === 'active' ? "text-green-500" : "text-slate-400"} />
+                      <span>Status do Agente</span>
                     </div>
                     <Switch 
                       checked={agent.status === 'active'} 
                       onCheckedChange={() => toggleAgent(agent.id, agent.status, agent.name)}
                     />
                   </div>
-                  <div className="flex gap-2 mt-2">
-                    <Button variant="outline" className="w-full gap-2" size="sm" asChild>
-                      <Link to={`/agents/edit/${agent.id}`}>Configurar</Link>
-                    </Button>
-                  </div>
+                  <Button variant="secondary" className="w-full mt-2" asChild>
+                    <Link to={`/agents/edit/${agent.id}`}>Configurar Cérebro</Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
