@@ -6,7 +6,8 @@ import {
   LogOut,
   Users,
   Building2,
-  ShieldCheck
+  ShieldCheck,
+  UserCog
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
@@ -26,6 +27,7 @@ const Layout = () => {
 
   const adminItems = [
     { icon: Building2, label: 'Empresas', path: '/admin/companies' },
+    { icon: UserCog, label: 'Usuários', path: '/admin/users' },
   ];
 
   const handleLogout = async () => {
