@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
