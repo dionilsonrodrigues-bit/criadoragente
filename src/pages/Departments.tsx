@@ -24,23 +24,33 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 const Departments = () => {
+  const { profile } = useAuth();
   const [departments, setDepartments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<any>(null);
 
   useEffect(() => {
-    fetchDepartments();
-  }, []);
+    if (profile) {
+      fetchDepartments();
+    }
+  }, [profile]);
 
   const fetchDepartments = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
+    const query = supabase
       .from('departments')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (profile?.company_id) {
+      query.eq('company_id', profile.company_id);
+    }
+    
+    const { data, error } = await query;
     
     if (error) {
       toast.error("Erro ao buscar departamentos");
@@ -60,7 +70,8 @@ const Departments = () => {
     const payload: any = {
       name,
       atendi_id: atendiId,
-      description
+      description,
+      company_id: profile?.company_id ?? null,
     };
 
     if (editingDept) {
