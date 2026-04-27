@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, MoreVertical, Power, Loader2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,8 +25,21 @@ const AgentsList = () => {
   useEffect(() => {
     if (profile) {
       fetchAgents();
+      fetchCompanyName();
     }
   }, [profile]);
+
+  const fetchCompanyName = async () => {
+    if (!profile?.company_id) return;
+
+    const { data } = await supabase
+      .from('companies')
+      .select('name')
+      .eq('id', profile.company_id)
+      .maybeSingle();
+
+    setCompanyName(data?.name || '');
+  };
 
   const fetchAgents = async () => {
     setIsLoading(true);
@@ -51,18 +64,17 @@ const AgentsList = () => {
 
   const toggleAgent = async (id: string, currentStatus: string, name: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    
-    // Desativa outros se estiver ativando este (apenas dentro da mesma empresa)
+
     if (newStatus === 'active') {
       const updateQuery = supabase
         .from('agents')
         .update({ status: 'inactive' })
         .neq('id', id);
-      
+
       if (profile?.company_id) {
         updateQuery.eq('company_id', profile.company_id);
       }
-      
+
       await updateQuery;
     }
 
@@ -81,7 +93,7 @@ const AgentsList = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este agente?')) return;
-    
+
     const { error } = await supabase
       .from('agents')
       .delete()
@@ -124,16 +136,22 @@ const AgentsList = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.map((agent) => (
-            <Card key={agent.id} className={cn(
-              "border-none shadow-sm ring-1 transition-all duration-300",
-              agent.status === 'active' ? "ring-blue-500 shadow-md shadow-blue-500/10" : "ring-slate-200"
-            )}>
+            <Card
+              key={agent.id}
+              className={cn(
+                "border-none shadow-sm ring-1 transition-all duration-300",
+                agent.status === 'active' ? "ring-blue-500 shadow-md shadow-blue-500/10" : "ring-slate-200"
+              )}
+            >
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                  <Badge variant={agent.status === 'active' ? "default" : "outline"} className={agent.status === 'active' ? "bg-blue-600 hover:bg-blue-600" : ""}>
+                  <Badge
+                    variant={agent.status === 'active' ? "default" : "outline"}
+                    className={agent.status === 'active' ? "bg-blue-600 hover:bg-blue-600" : ""}
+                  >
                     {agent.status === 'active' ? 'Ativo' : 'Inativo'}
                   </Badge>
-                  
+
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -142,9 +160,11 @@ const AgentsList = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link to={`/agents/edit/${agent.id}`} className="cursor-pointer">Editar</Link>
+                        <Link to={`/agents/edit/${agent.id}`} className="cursor-pointer">
+                          Editar
+                        </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-red-600 cursor-pointer"
                         onClick={() => handleDelete(agent.id)}
                       >
@@ -154,7 +174,9 @@ const AgentsList = () => {
                   </DropdownMenu>
                 </div>
                 <CardTitle className="mt-4 text-xl font-bold text-slate-900">{agent.name}</CardTitle>
-                <CardDescription className="truncate text-slate-500">Objetivo: {agent.objective || 'Não definido'}</CardDescription>
+                <CardDescription className="truncate text-slate-500">
+                  Objetivo: {agent.objective || 'Não definido'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col gap-4">
@@ -166,32 +188,17 @@ const AgentsList = () => {
                     <span className="text-slate-500">Empresa</span>
                     <span className="font-semibold text-slate-900 truncate">{companyName || agent.company_id || '-'}</span>
                   </div>
-
                   <div className="flex justify-between items-center">
-
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Power size={14} className={agent.status === 'active' ? "text-green-500" : "text-slate-400"} />
+                      <Power size={14} className={agent.status === 'active' ? 'text-green-500' : 'text-slate-400'} />
                       <span>Status do Agente</span>
                     </div>
-                    <Switch 
-                      checked={agent.status === 'active'} 
+                    <Switch
+                      checked={agent.status === 'active'}
                       onCheckedChange={() => toggleAgent(agent.id, agent.status, agent.name)}
                     />
                   </div>
                   <Button variant="secondary" className="w-full mt-2" asChild>
-                    <Link to={`/agents/edit/${agent.id}`}>Configurar Cérebro</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default AgentsList;sChild>
                     <Link to={`/agents/edit/${agent.id}`}>Configurar Cérebro</Link>
                   </Button>
                 </div>
