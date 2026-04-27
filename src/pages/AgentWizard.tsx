@@ -140,6 +140,12 @@ const AgentWizard = () => {
       return;
     }
 
+    if (!profile?.company_id) {
+      toast.error('Usuário sem empresa vinculada');
+      setIsLoading(false);
+      return;
+    }
+
     const payload: any = {
       name: formData.name,
       objective: formData.objective,
@@ -151,13 +157,9 @@ const AgentWizard = () => {
       business_context: formData.businessContext,
       transfer_rule: formData.transferRule,
       transfer_dept_id: formData.transferDept || null,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      company_id: profile.company_id,
     };
-
-    // Vincular à empresa do usuário logado
-    if (profile?.company_id) {
-      payload.company_id = profile.company_id;
-    }
 
     let error;
     if (id) {

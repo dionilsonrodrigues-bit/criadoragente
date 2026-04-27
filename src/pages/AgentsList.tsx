@@ -19,6 +19,7 @@ import {
 const AgentsList = () => {
   const { profile } = useAuth();
   const [agents, setAgents] = useState<any[]>([]);
+  const [companyName, setCompanyName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -161,7 +162,13 @@ const AgentsList = () => {
                     <span className="text-slate-500">Tipo</span>
                     <span className="font-semibold text-slate-900 uppercase tracking-tighter">{agent.type || '-'}</span>
                   </div>
+                  <div className="flex justify-between items-center py-3 border-y border-slate-50 text-sm">
+                    <span className="text-slate-500">Empresa</span>
+                    <span className="font-semibold text-slate-900 truncate">{companyName || agent.company_id || '-'}</span>
+                  </div>
+
                   <div className="flex justify-between items-center">
+
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Power size={14} className={agent.status === 'active' ? "text-green-500" : "text-slate-400"} />
                       <span>Status do Agente</span>
@@ -172,6 +179,19 @@ const AgentsList = () => {
                     />
                   </div>
                   <Button variant="secondary" className="w-full mt-2" asChild>
+                    <Link to={`/agents/edit/${agent.id}`}>Configurar Cérebro</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AgentsList;sChild>
                     <Link to={`/agents/edit/${agent.id}`}>Configurar Cérebro</Link>
                   </Button>
                 </div>

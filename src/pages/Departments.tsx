@@ -175,7 +175,10 @@ const Departments = () => {
                     <TableCell className="font-semibold">
                       <div className="flex items-center gap-2">
                         <Building2 size={16} className="text-slate-400" />
-                        {dept.name} <span className="text-xs text-gray-400 font-normal">({dept.atendi_id})</span>
+                        <div className="flex flex-col">
+                          <span>{dept.name}</span>
+                          <span className="text-xs text-gray-400 font-normal">ID: {dept.atendi_id} · Empresa: {dept.company_id || '-'}</span>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right space-x-1">
@@ -188,6 +191,7 @@ const Departments = () => {
                     </TableCell>
                   </TableRow>
                 ))}
+
               </TableBody>
             </Table>
           )}
