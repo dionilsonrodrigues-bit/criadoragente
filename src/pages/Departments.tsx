@@ -62,6 +62,12 @@ const Departments = () => {
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!profile?.company_id) {
+      toast.error('Perfil sem empresa vinculada. Faça login novamente.');
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
     const atendiId = formData.get('atendiId') as string;
@@ -71,7 +77,7 @@ const Departments = () => {
       name,
       atendi_id: atendiId,
       description,
-      company_id: profile?.company_id ?? null,
+      company_id: profile.company_id,
     };
 
     if (editingDept) {
