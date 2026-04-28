@@ -23,16 +23,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 
 const AdminCompanies = () => {
+  const { profile } = useAuth();
   const [companies, setCompanies] = useState<any[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
 
   useEffect(() => {
-    fetchCompanies();
-  }, []);
+    if (profile?.role === 'super_admin') {
+      fetchCompanies();
+    }
+  }, [profile]);
 
   const fetchCompanies = async () => {
     setIsLoading(true);
