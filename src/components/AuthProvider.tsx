@@ -26,26 +26,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfileWithTimeout = async (userId: string): Promise<Profile | null> => {
-    // Cria uma promessa que rejeita após 3 segundos
-    const timeout = new Promise<null>((_, reject) => 
-      setTimeout(() => reject(new Error("Timeout ao carregar perfil")), 3000)
-    );
-
     try {
-      // Tenta buscar o perfil, mas desiste se demorar mais que o timeout
-      const profilePromise = supabase
+      const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+      const profileRequest = supabase
         .from('profiles')
-        .select('*')
+        .select('id, role, company_id')
         .eq('id', userId)
         .maybeSingle()
         .then(({ data, error }) => {
           if (error) throw error;
-          return data as Profile;
+          return (data as Profile | null) ?? null;
         });
 
-      return await Promise.race([profilePromise, timeout]);
+      return await Promise.race([profileRequest, timeout]);
     } catch (err) {
-      console.error("[Auth] Erro ou Timeout no perfil:", err);
+      console.error("[Auth] Erro ao carregar perfil:", err);
       return null;
     }
   };

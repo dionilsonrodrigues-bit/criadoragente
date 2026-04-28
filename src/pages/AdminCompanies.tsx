@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Building2, Loader2, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+
 import { Button } from "@/components/ui/button";
 import { 
   Table, 
@@ -109,7 +110,7 @@ const AdminCompanies = () => {
     }
   };
 
-  if (profile?.role !== 'super_admin') {
+  if (profile && profile.role !== 'super_admin') {
     return (
       <div className="rounded-lg border bg-white p-6 text-slate-500">
         Acesso restrito ao Super Admin.
@@ -118,6 +119,7 @@ const AdminCompanies = () => {
   }
 
   return (
+
     <div className="space-y-6">
 
       <div className="flex justify-between items-center">
