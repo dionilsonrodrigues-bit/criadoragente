@@ -33,7 +33,16 @@ const Departments = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<any>(null);
 
+  if (!profile) {
+    return (
+      <div className="p-8 text-slate-500">
+        Carregando perfil do usuário...
+      </div>
+    );
+  }
+
   useEffect(() => {
+
     if (profile) {
       fetchDepartments();
     }

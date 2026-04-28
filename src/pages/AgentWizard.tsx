@@ -67,7 +67,16 @@ const AgentWizard = () => {
 
   const [isCustomObjective, setIsCustomObjective] = useState(false);
   
+  if (!profile) {
+    return (
+      <div className="max-w-4xl mx-auto p-8 text-slate-500">
+        Carregando perfil do usuário...
+      </div>
+    );
+  }
+
   const [formData, setFormData] = useState<AgentData>({
+
     name: '',
     objective: '',
     type: '',

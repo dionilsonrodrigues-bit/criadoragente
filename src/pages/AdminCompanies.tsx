@@ -110,7 +110,15 @@ const AdminCompanies = () => {
     }
   };
 
-  if (profile && profile.role !== 'super_admin') {
+  if (!profile) {
+    return (
+      <div className="rounded-lg border bg-white p-6 text-slate-500">
+        Carregando perfil do usuário...
+      </div>
+    );
+  }
+
+  if (profile.role !== 'super_admin') {
     return (
       <div className="rounded-lg border bg-white p-6 text-slate-500">
         Acesso restrito ao Super Admin.
