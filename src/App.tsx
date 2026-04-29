@@ -45,18 +45,18 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
 
-            <Route element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }>
+            <Route
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
               <Route path="/" element={<Index />} />
               <Route path="/agents" element={<AgentsList />} />
               <Route path="/agents/new" element={<AgentWizard />} />
               <Route path="/agents/edit/:id" element={<AgentWizard />} />
               <Route path="/departments" element={<Departments />} />
-              
-              {/* Rotas Administrativas */}
               <Route path="/admin/companies" element={<AdminCompanies />} />
               <Route path="/admin/users" element={<AdminUsers />} />
             </Route>

@@ -27,6 +27,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const clearSession = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+  };
+
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
       const { data, error } = await supabase
@@ -47,9 +54,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     for (let attempt = 0; attempt < 3; attempt++) {
       const result = await fetchProfile(userId);
       if (result) return result;
-      await wait(400);
+      await wait(300);
     }
-
     return null;
   };
 
@@ -64,10 +70,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const initialize = async () => {
       try {
-        const {
-          data: { session: initialSession },
-        } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
 
+        if (error) {
+          console.warn('[Auth] Sessão inválida ao iniciar:', error.message);
+          await clearSession();
+          return;
+        }
+
+        const initialSession = data.session;
         if (initialSession) {
           setSession(initialSession);
           setUser(initialSession.user);
@@ -76,6 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (e) {
         console.error('[Auth] Falha na inicialização:', e);
+        await clearSession();
       } finally {
         setLoading(false);
       }
@@ -102,6 +114,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(currentSession.user);
           const nextProfile = await fetchProfileWithRetry(currentSession.user.id);
           setProfile(nextProfile);
+        } else {
+          await clearSession();
         }
 
         setLoading(false);
@@ -112,7 +126,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await clearSession();
     window.location.href = '/login';
   };
 

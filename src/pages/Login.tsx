@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
@@ -25,7 +25,7 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -33,10 +33,12 @@ const Login = () => {
 
     if (error) {
       toast.error('E-mail ou senha incorretos.');
-    } else {
-      toast.success('Login realizado com sucesso!');
-      navigate('/');
+      setLoading(false);
+      return;
     }
+
+    toast.success('Login realizado com sucesso!');
+    navigate('/');
     setLoading(false);
   };
 
@@ -50,29 +52,29 @@ const Login = () => {
           <h1 className="text-2xl font-bold text-slate-900">AtendiPRO IA</h1>
           <p className="text-slate-500 text-sm">Entre na sua conta para gerenciar seus agentes</p>
         </div>
-        
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
-            <Input 
-              id="email" 
-              type="email" 
-              placeholder="seu@email.com" 
+            <Input
+              id="email"
+              type="email"
+              placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required 
+              required
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
             <div className="relative">
-              <Input 
-                id="password" 
-                type={showPassword ? "text" : "password"} 
-                placeholder="••••••••" 
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required 
+                required
               />
               <button
                 type="button"
