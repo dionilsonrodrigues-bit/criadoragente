@@ -49,19 +49,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        const isAbort = error.details?.includes('AbortError') || error.message?.includes('AbortError');
+        if (isAbort) {
+          console.warn('[Auth] Busca de perfil abortada, seguindo sem travar a interface.');
+          return null;
+        }
+        throw error;
+      }
+
       return (data as Profile | null) ?? null;
-    } catch (err) {
+    } catch (err: any) {
+      const isAbort = err?.details?.includes('AbortError') || err?.message?.includes('AbortError');
+      if (isAbort) {
+        console.warn('[Auth] Busca de perfil abortada, seguindo sem travar a interface.');
+        return null;
+      }
+
       console.error('[Auth] Erro ao carregar perfil:', err);
       return null;
     }
   };
 
   const fetchProfileWithRetry = async (userId: string): Promise<Profile | null> => {
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       const result = await fetchProfile(userId);
       if (result) return result;
-      await wait(300);
+      await wait(250);
     }
     return null;
   };
@@ -74,16 +88,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     setSession(nextSession);
     setUser(nextSession.user);
-    const nextProfile = await fetchProfileWithRetry(nextSession.user.id);
-    setProfile(nextProfile);
+
+    void fetchProfileWithRetry(nextSession.user.id).then((nextProfile) => {
+      setProfile(nextProfile);
+    });
   };
 
   const retryProfile = async () => {
     if (!user) return;
-    setLoading(true);
     const nextProfile = await fetchProfileWithRetry(user.id);
     setProfile(nextProfile);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -110,7 +124,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const refreshFromCurrentSession = async () => {
-      setLoading(true);
       try {
         const { data, error } = await supabase.auth.getSession();
         if (error) {
@@ -121,8 +134,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error('[Auth] Falha ao recuperar sessão ativa:', error);
         await clearBrokenSession();
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -138,12 +149,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
-        setLoading(true);
-        try {
-          await applySession(currentSession);
-        } finally {
-          setLoading(false);
-        }
+        await applySession(currentSession);
+        setLoading(false);
       }
     });
 
@@ -153,11 +160,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    window.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       subscription.unsubscribe();
-      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
