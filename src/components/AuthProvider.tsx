@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import { AuthApiError, Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Profile {
@@ -18,7 +18,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -27,11 +26,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const clearSession = async () => {
-    await supabase.auth.signOut();
+  const clearLocalState = () => {
     setSession(null);
     setUser(null);
     setProfile(null);
+  };
+
+  const clearBrokenSession = async () => {
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // ignore local cleanup errors
+    }
+    clearLocalState();
   };
 
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
@@ -59,6 +66,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return null;
   };
 
+  const applySession = async (nextSession: Session | null) => {
+    if (!nextSession) {
+      clearLocalState();
+      return;
+    }
+
+    setSession(nextSession);
+    setUser(nextSession.user);
+    const nextProfile = await fetchProfileWithRetry(nextSession.user.id);
+    setProfile(nextProfile);
+  };
+
   const retryProfile = async () => {
     if (!user) return;
     setLoading(true);
@@ -69,25 +88,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const initialize = async () => {
+      setLoading(true);
       try {
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.warn('[Auth] Sessão inválida ao iniciar:', error.message);
-          await clearSession();
+          if (error instanceof AuthApiError) {
+            console.warn('[Auth] Sessão inválida ao iniciar:', error.message);
+          }
+          await clearBrokenSession();
           return;
         }
 
-        const initialSession = data.session;
-        if (initialSession) {
-          setSession(initialSession);
-          setUser(initialSession.user);
-          const nextProfile = await fetchProfileWithRetry(initialSession.user.id);
-          setProfile(nextProfile);
+        await applySession(data.session);
+      } catch (error) {
+        console.error('[Auth] Falha na inicialização:', error);
+        await clearBrokenSession();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const refreshFromCurrentSession = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          await clearBrokenSession();
+          return;
         }
-      } catch (e) {
-        console.error('[Auth] Falha na inicialização:', e);
-        await clearSession();
+        await applySession(data.session);
+      } catch (error) {
+        console.error('[Auth] Falha ao recuperar sessão ativa:', error);
+        await clearBrokenSession();
       } finally {
         setLoading(false);
       }
@@ -99,34 +132,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setUser(null);
-        setProfile(null);
+        clearLocalState();
         setLoading(false);
         return;
       }
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION') {
         setLoading(true);
-
-        if (currentSession) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-          const nextProfile = await fetchProfileWithRetry(currentSession.user.id);
-          setProfile(nextProfile);
-        } else {
-          await clearSession();
+        try {
+          await applySession(currentSession);
+        } finally {
+          setLoading(false);
         }
-
-        setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshFromCurrentSession();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const signOut = async () => {
-    await clearSession();
+    await clearBrokenSession();
     window.location.href = '/login';
   };
 
