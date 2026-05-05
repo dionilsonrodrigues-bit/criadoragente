@@ -18,10 +18,10 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Verificar se quem está chamando é super_admin
     const authHeader = req.headers.get('Authorization')
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(authHeader?.replace('Bearer ', '') ?? '')
-    
+    const token = authHeader?.replace('Bearer ', '') ?? ''
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+
     if (authError || !user) throw new Error('Não autorizado')
 
     const { data: profile } = await supabaseAdmin
@@ -32,9 +32,28 @@ serve(async (req) => {
 
     if (profile?.role !== 'super_admin') throw new Error('Apenas super admins podem gerenciar usuários')
 
-    const { email, password, role, company_id, first_name } = await req.json()
+    const body = await req.json()
+    const action = body.action || 'create'
 
-    // 1. Criar usuário no Auth
+    if (action === 'delete') {
+      const userId = body.user_id
+
+      if (!userId) throw new Error('Usuário não informado')
+      if (userId === user.id) throw new Error('Você não pode excluir seu próprio usuário')
+
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+      if (deleteError) throw deleteError
+
+      console.log(`[manage-users] Usuário ${userId} excluído com sucesso`)
+
+      return new Response(JSON.stringify({ message: 'Usuário excluído com sucesso' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      })
+    }
+
+    const { email, password, role, company_id, first_name } = body
+
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -44,7 +63,6 @@ serve(async (req) => {
 
     if (createError) throw createError
 
-    // 2. Atualizar o perfil criado pelo trigger ou criar se não existir
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .update({ role, company_id, first_name })
@@ -58,9 +76,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
-
   } catch (error) {
-    console.error("[manage-users] Erro:", error.message)
+    console.error('[manage-users] Erro:', error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

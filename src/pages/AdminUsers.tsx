@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Shield, User, Loader2, Building } from 'lucide-react';
+import { Plus, Edit2, User, Loader2, Building, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -20,12 +20,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { toast } from 'sonner';
 import { supabase } from "@/integrations/supabase/client";
@@ -58,7 +58,7 @@ const AdminUsers = () => {
     e.preventDefault();
     setIsSaving(true);
     const formData = new FormData(e.currentTarget);
-    
+
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const first_name = formData.get('first_name') as string;
@@ -66,30 +66,29 @@ const AdminUsers = () => {
     const company_id = formData.get('company_id') as string;
 
     if (editingUser) {
-      // Atualizar perfil existente
       const { error } = await supabase
         .from('profiles')
-        .update({ 
-          first_name, 
-          role, 
-          company_id: company_id === 'null' ? null : company_id 
+        .update({
+          first_name,
+          role,
+          company_id: company_id === 'null' ? null : company_id
         })
         .eq('id', editingUser.id);
 
-      if (error) toast.error(error.message);
-      else {
+      if (error) {
+        toast.error(error.message);
+      } else {
         toast.success('Usuário atualizado!');
         fetchData();
         setIsDialogOpen(false);
       }
     } else {
-      // Criar novo via Edge Function
       try {
-        const { data, error } = await supabase.functions.invoke('manage-users', {
-          body: { 
-            email, 
-            password, 
-            role, 
+        const { error } = await supabase.functions.invoke('manage-users', {
+          body: {
+            email,
+            password,
+            role,
             company_id: company_id === 'null' ? null : company_id,
             first_name
           }
@@ -103,7 +102,27 @@ const AdminUsers = () => {
         toast.error(`Erro: ${err.message}`);
       }
     }
+
     setIsSaving(false);
+  };
+
+  const handleDelete = async (userId: string) => {
+    if (!confirm('Deseja realmente excluir este usuário?')) return;
+
+    try {
+      const { error } = await supabase.functions.invoke('manage-users', {
+        body: {
+          action: 'delete',
+          user_id: userId,
+        }
+      });
+
+      if (error) throw error;
+      toast.success('Usuário excluído com sucesso!');
+      fetchData();
+    } catch (err: any) {
+      toast.error(`Erro: ${err.message}`);
+    }
   };
 
   return (
@@ -160,9 +179,14 @@ const AdminUsers = () => {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingUser(u); setIsDialogOpen(true); }}>
-                        <Edit2 size={14} />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingUser(u); setIsDialogOpen(true); }}>
+                          <Edit2 size={14} />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(u.id)}>
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -221,7 +245,7 @@ const AdminUsers = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="null">Nenhuma (Acesso Global)</SelectItem>
-                      {companies.map(c => (
+                      {companies.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
