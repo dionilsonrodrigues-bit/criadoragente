@@ -73,10 +73,10 @@ const CompanyToken = () => {
     return <div className="rounded-lg border bg-white p-6 text-slate-500">Carregando perfil...</div>;
   }
 
-  if (profile.role !== 'company_admin') {
+  if (profile.role !== 'super_admin') {
     return (
       <div className="rounded-lg border bg-white p-6 text-slate-500">
-        Este menu é destinado ao Admin da Empresa.
+        Este menu é destinado ao Super Admin.
       </div>
     );
   }
@@ -85,7 +85,8 @@ const CompanyToken = () => {
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Token da Empresa</h1>
-        <p className="text-gray-500">Cadastre e copie o token usado pela sua empresa.</p>
+        <p className="text-gray-500">Cadastre e copie o token usado pela empresa selecionada.</p>
+
       </div>
 
       <Card className="border-none shadow-sm ring-1 ring-black/5">

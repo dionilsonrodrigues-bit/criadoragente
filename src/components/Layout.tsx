@@ -32,10 +32,6 @@ const Layout = () => {
     { icon: UserCog, label: 'Usuários', path: '/admin/users' },
   ];
 
-  const companyAdminItems = [
-    { icon: KeyRound, label: 'Token da Empresa', path: '/company/token' },
-  ];
-
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
@@ -100,27 +96,36 @@ const Layout = () => {
             </div>
           )}
 
-          {!isSuperAdmin && profile?.company_id && (
+          {isSuperAdmin && profile?.company_id && (
             <div>
               <p className="px-3 text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-2 flex items-center gap-1">
                 <KeyRound size={10} /> Configurações da Empresa
               </p>
               <div className="space-y-1">
-                {companyAdminItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200",
-                      location.pathname === item.path
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-                        : "text-slate-400 hover:bg-slate-900 hover:text-white"
-                    )}
-                  >
-                    <item.icon size={18} />
-                    <span className="font-medium text-sm">{item.label}</span>
-                  </Link>
-                ))}
+                <Link
+                  to="/admin/companies"
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200",
+                    location.pathname === '/admin/companies'
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                      : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                  )}
+                >
+                  <Building2 size={18} />
+                  <span className="font-medium text-sm">Empresas</span>
+                </Link>
+                <Link
+                  to="/admin/companies"
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200",
+                    location.pathname === '/admin/companies'
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                      : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                  )}
+                >
+                  <KeyRound size={18} />
+                  <span className="font-medium text-sm">Token da Empresa</span>
+                </Link>
               </div>
             </div>
           )}

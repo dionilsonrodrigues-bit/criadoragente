@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, KeyRound } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
 import { 
@@ -133,7 +133,8 @@ const AdminCompanies = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Gestão de Empresas</h1>
-          <p className="text-gray-500">Adicione e gerencie as empresas que utilizam a plataforma.</p>
+          <p className="text-gray-500">Adicione, gerencie e mantenha o token das empresas.</p>
+
         </div>
         
         <Button className="gap-2" onClick={() => { setEditingCompany(null); setIsDialogOpen(true); }}>
@@ -153,9 +154,11 @@ const AdminCompanies = () => {
                 <TableRow>
                   <TableHead className="font-bold">Empresa / ID Externo</TableHead>
                   <TableHead className="font-bold">Descrição</TableHead>
+                  <TableHead className="font-bold">Token</TableHead>
                   <TableHead className="text-right font-bold">Ações</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {companies.map((company) => (
                   <TableRow key={company.id}>
@@ -168,7 +171,14 @@ const AdminCompanies = () => {
                     <TableCell className="max-w-xs truncate text-gray-600">
                       {company.description || '-'}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 text-slate-600">
+                        <KeyRound size={14} className="text-slate-400" />
+                        {company.api_key ? 'Token cadastrado' : <span className="text-gray-300 italic text-xs">Sem token</span>}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right space-x-1">
+
                       <Button variant="ghost" size="icon" onClick={() => { setEditingCompany(company); setIsDialogOpen(true); }}>
                         <Edit2 size={14} />
                       </Button>
