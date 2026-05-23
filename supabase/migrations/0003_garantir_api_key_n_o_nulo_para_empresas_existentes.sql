@@ -1,0 +1,1 @@
+UPDATE public.companies SET api_key = COALESCE(api_key, '') WHERE api_key IS NULL;

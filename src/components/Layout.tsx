@@ -2,13 +2,15 @@ import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  Bot, 
+  Bot,
   LogOut,
   Users,
   Building2,
   ShieldCheck,
-  UserCog
+  UserCog,
+  KeyRound
 } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
 
@@ -28,6 +30,10 @@ const Layout = () => {
   const adminItems = [
     { icon: Building2, label: 'Empresas', path: '/admin/companies' },
     { icon: UserCog, label: 'Usuários', path: '/admin/users' },
+  ];
+
+  const companyAdminItems = [
+    { icon: KeyRound, label: 'Token da Empresa', path: '/company/token' },
   ];
 
   const handleLogout = async () => {
@@ -81,7 +87,7 @@ const Layout = () => {
                     to={item.path}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200",
-                      location.pathname === item.path 
+                      location.pathname === item.path
                         ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
                         : "text-slate-400 hover:bg-slate-900 hover:text-white"
                     )}
@@ -93,6 +99,32 @@ const Layout = () => {
               </div>
             </div>
           )}
+
+          {!isSuperAdmin && profile?.company_id && (
+            <div>
+              <p className="px-3 text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+                <KeyRound size={10} /> Configurações da Empresa
+              </p>
+              <div className="space-y-1">
+                {companyAdminItems.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200",
+                      location.pathname === item.path
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                        : "text-slate-400 hover:bg-slate-900 hover:text-white"
+                    )}
+                  >
+                    <item.icon size={18} />
+                    <span className="font-medium text-sm">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
         </nav>
 
         <div className="p-4 border-t border-slate-900">

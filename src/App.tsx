@@ -11,6 +11,7 @@ import AgentsList from "./pages/AgentsList";
 import Departments from "./pages/Departments";
 import AdminCompanies from "./pages/AdminCompanies";
 import AdminUsers from "./pages/AdminUsers";
+import CompanyToken from "./pages/CompanyToken";
 import Login from "./pages/Login";
 import Layout from "./components/Layout";
 
@@ -57,8 +58,10 @@ const App = () => (
               <Route path="/agents/new" element={<AgentWizard />} />
               <Route path="/agents/edit/:id" element={<AgentWizard />} />
               <Route path="/departments" element={<Departments />} />
+              <Route path="/company/token" element={<CompanyToken />} />
               <Route path="/admin/companies" element={<AdminCompanies />} />
               <Route path="/admin/users" element={<AdminUsers />} />
+
             </Route>
 
             <Route path="*" element={<NotFound />} />
