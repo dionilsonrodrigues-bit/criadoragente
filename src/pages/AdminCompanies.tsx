@@ -10,7 +10,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -29,10 +29,10 @@ import { useAuth } from "@/components/AuthProvider";
 const AdminCompanies = () => {
   const { profile } = useAuth();
   const [companies, setCompanies] = useState<any[]>([]);
-
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [tokenValue, setTokenValue] = useState('');
 
   useEffect(() => {
     if (profile?.role === 'super_admin') {
@@ -55,6 +55,18 @@ const AdminCompanies = () => {
     setIsLoading(false);
   };
 
+  const openCreateDialog = () => {
+    setEditingCompany(null);
+    setTokenValue('');
+    setIsDialogOpen(true);
+  };
+
+  const openEditDialog = (company: any) => {
+    setEditingCompany(company);
+    setTokenValue(company.api_key || '');
+    setIsDialogOpen(true);
+  };
+
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -66,7 +78,8 @@ const AdminCompanies = () => {
       name,
       atendi_id,
       description,
-      status: 'active'
+      status: 'active',
+      api_key: tokenValue.trim() || null,
     };
 
     if (editingCompany) {
@@ -93,6 +106,29 @@ const AdminCompanies = () => {
         setIsDialogOpen(false);
       }
     }
+  };
+
+  const handleDeleteToken = async () => {
+    if (!editingCompany) return;
+
+    const { error } = await supabase
+      .from('companies')
+      .update({ api_key: null })
+      .eq('id', editingCompany.id);
+
+    if (error) {
+      toast.error(`Erro ao remover token: ${error.message}`);
+      return;
+    }
+
+    setTokenValue('');
+    setEditingCompany((current: any) => current ? { ...current, api_key: null } : current);
+    setCompanies((current) =>
+      current.map((company) =>
+        company.id === editingCompany.id ? { ...company, api_key: null } : company
+      )
+    );
+    toast.success('Token removido com sucesso!');
   };
 
   const handleDelete = async (id: string) => {
@@ -127,17 +163,14 @@ const AdminCompanies = () => {
   }
 
   return (
-
     <div className="space-y-6">
-
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Gestão de Empresas</h1>
           <p className="text-gray-500">Adicione, gerencie e mantenha o token das empresas.</p>
-
         </div>
         
-        <Button className="gap-2" onClick={() => { setEditingCompany(null); setIsDialogOpen(true); }}>
+        <Button className="gap-2" onClick={openCreateDialog}>
           <Plus size={18} /> Nova Empresa
         </Button>
       </div>
@@ -178,8 +211,7 @@ const AdminCompanies = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-right space-x-1">
-
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingCompany(company); setIsDialogOpen(true); }}>
+                      <Button variant="ghost" size="icon" onClick={() => openEditDialog(company)}>
                         <Edit2 size={14} />
                       </Button>
                       <Button variant="ghost" size="icon" className="text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(company.id)}>
@@ -213,6 +245,36 @@ const AdminCompanies = () => {
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição</Label>
                 <Textarea id="description" name="description" defaultValue={editingCompany?.description} placeholder="Breve resumo sobre a empresa..." />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="apiKey" className="flex items-center gap-2">
+                    <KeyRound size={16} className="text-slate-400" />
+                    Token da Empresa
+                  </Label>
+                  {editingCompany?.api_key && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={handleDeleteToken}
+                    >
+                      Apagar token
+                    </Button>
+                  )}
+                </div>
+                <Input
+                  id="apiKey"
+                  name="apiKey"
+                  value={tokenValue}
+                  onChange={(e) => setTokenValue(e.target.value)}
+                  placeholder="Insira o token da empresa"
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-gray-400">
+                  Você pode adicionar, alterar ou remover o token desta empresa aqui mesmo.
+                </p>
               </div>
             </div>
             <DialogFooter>
