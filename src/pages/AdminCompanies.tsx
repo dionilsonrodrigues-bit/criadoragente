@@ -33,6 +33,7 @@ const AdminCompanies = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [tokenValue, setTokenValue] = useState('');
+  const [integrationUrl, setIntegrationUrl] = useState('');
 
   useEffect(() => {
     if (profile?.role === 'super_admin') {
@@ -58,12 +59,14 @@ const AdminCompanies = () => {
   const openCreateDialog = () => {
     setEditingCompany(null);
     setTokenValue('');
+    setIntegrationUrl('');
     setIsDialogOpen(true);
   };
 
   const openEditDialog = (company: any) => {
     setEditingCompany(company);
     setTokenValue(company.api_key || '');
+    setIntegrationUrl(company.integration_url || '');
     setIsDialogOpen(true);
   };
 
@@ -80,6 +83,7 @@ const AdminCompanies = () => {
       description,
       status: 'active',
       api_key: tokenValue.trim() || null,
+      integration_url: integrationUrl.trim() || null,
     };
 
     if (editingCompany) {
@@ -129,6 +133,29 @@ const AdminCompanies = () => {
       )
     );
     toast.success('Token removido com sucesso!');
+  };
+
+  const handleDeleteIntegrationUrl = async () => {
+    if (!editingCompany) return;
+
+    const { error } = await supabase
+      .from('companies')
+      .update({ integration_url: null })
+      .eq('id', editingCompany.id);
+
+    if (error) {
+      toast.error(`Erro ao remover URL de integração: ${error.message}`);
+      return;
+    }
+
+    setIntegrationUrl('');
+    setEditingCompany((current: any) => current ? { ...current, integration_url: null } : current);
+    setCompanies((current) =>
+      current.map((company) =>
+        company.id === editingCompany.id ? { ...company, integration_url: null } : company
+      )
+    );
+    toast.success('URL de integração removida com sucesso!');
   };
 
   const handleDelete = async (id: string) => {
@@ -188,6 +215,7 @@ const AdminCompanies = () => {
                   <TableHead className="font-bold">Empresa / ID Externo</TableHead>
                   <TableHead className="font-bold">Descrição</TableHead>
                   <TableHead className="font-bold">Token</TableHead>
+                  <TableHead className="font-bold">URL Integração</TableHead>
                   <TableHead className="text-right font-bold">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -209,6 +237,9 @@ const AdminCompanies = () => {
                         <KeyRound size={14} className="text-slate-400" />
                         {company.api_key ? 'Token cadastrado' : <span className="text-gray-300 italic text-xs">Sem token</span>}
                       </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate text-gray-600">
+                      {company.integration_url || <span className="text-gray-300 italic text-xs">Sem URL</span>}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button variant="ghost" size="icon" onClick={() => openEditDialog(company)}>
@@ -274,6 +305,33 @@ const AdminCompanies = () => {
                 />
                 <p className="text-xs text-gray-400">
                   Você pode adicionar, alterar ou remover o token desta empresa aqui mesmo.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="integrationUrl">URL de Integração</Label>
+                  {editingCompany?.integration_url && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={handleDeleteIntegrationUrl}
+                    >
+                      Apagar URL
+                    </Button>
+                  )}
+                </div>
+                <Input
+                  id="integrationUrl"
+                  name="integrationUrl"
+                  value={integrationUrl}
+                  onChange={(e) => setIntegrationUrl(e.target.value)}
+                  placeholder="https://sua-api.com/webhook"
+                />
+                <p className="text-xs text-gray-400">
+                  Use este campo para salvar o endereço da integração da empresa.
                 </p>
               </div>
             </div>
